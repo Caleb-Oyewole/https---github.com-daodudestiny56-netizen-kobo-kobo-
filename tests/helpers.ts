@@ -1,5 +1,20 @@
+import { loadConfig } from '../src/config';
+import type { Deps } from '../src/deps';
 import { createPool, type Pool } from '../src/db/pool';
 import { koboToNaira, type Kobo } from '../src/money';
+
+/** Deps with a controllable clock (default: 2026-11-06 14:00 WAT). */
+export function makeDeps(pool: Pool, o: { now?: Date; config?: Partial<ReturnType<typeof loadConfig>> } = {}): Deps & { setNow(d: Date): void } {
+  let now = o.now ?? new Date('2026-11-06T13:00:00Z');
+  return {
+    db: pool,
+    config: { ...loadConfig({}), ...o.config },
+    clock: () => now,
+    setNow: (d: Date) => {
+      now = d;
+    },
+  };
+}
 
 export function testPool(): Pool {
   return createPool(process.env.DATABASE_URL!);
