@@ -172,6 +172,7 @@ async function recordTerminal(
         kind: o.sms.kind,
         body: o.sms.body,
         dedupeKey: `${o.sms.kind.toLowerCase()}:${rec.id}`,
+        at: deps.clock(),
       });
     }
     return rec;
@@ -261,6 +262,7 @@ export async function finalizeSweep(deps: Deps, sweepId: string, debitReference:
       to: merchant.phone_number,
       kind: 'SWEEP_RECEIPT',
       dedupeKey: `receipt:${rec.id}`,
+      at: deps.clock(),
       body: sweepReceipt(merchant.preferred_language, {
         takings: nairaDisplay(rec.totalTakings),
         rate: rateDisplay(rec.rateHundredths),

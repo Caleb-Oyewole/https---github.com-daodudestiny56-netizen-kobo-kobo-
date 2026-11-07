@@ -146,6 +146,7 @@ async function markDisbursed(deps: Deps, w: WithdrawalRecord, creditReference: s
       to: m.rows[0].phone_number,
       kind: 'WITHDRAWAL',
       dedupeKey: `withdrawal:${w.id}`,
+      at: deps.clock(),
       body: withdrawalConfirmed(m.rows[0].preferred_language, { amount: nairaDisplay(w.amount), account: maskNuban(w.destinationNuban) }),
     });
   });

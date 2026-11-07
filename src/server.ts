@@ -2,7 +2,8 @@ import formbody from '@fastify/formbody';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { AppError } from './errors';
 import type { Deps } from './deps';
-import { serviceAuth } from './http/auth';
+import { serviceAuth, webhookAuth } from './http/auth';
+import { channelRoutes } from './routes/channels';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
@@ -34,6 +35,12 @@ export function buildServer(deps: Deps): FastifyInstance {
     pfaRoutes(internal, deps);
     sweepRoutes(internal, deps);
     withdrawalRoutes(internal, deps);
+  });
+
+  // Telco webhooks: USSD and inbound SMS.
+  app.register(async (telco) => {
+    telco.addHook('preHandler', webhookAuth(deps.config.webhookToken));
+    channelRoutes(telco, deps);
   });
 
   return app;

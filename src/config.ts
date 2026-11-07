@@ -30,6 +30,8 @@ export interface AppConfig {
     atSenderId: string;
     dispatchIntervalMs: number;
     maxAttempts: number;
+    /** First retry delay for a failed send; doubles each attempt. */
+    retryBaseMs: number;
   };
 }
 
@@ -60,6 +62,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       atSenderId: env.AT_SENDER_ID ?? '',
       dispatchIntervalMs: int(env.SMS_DISPATCH_INTERVAL_MS, 5000),
       maxAttempts: int(env.SMS_MAX_ATTEMPTS, 5),
+      retryBaseMs: int(env.SMS_RETRY_BASE_MS, 30_000),
     },
   };
 }

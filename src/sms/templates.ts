@@ -44,3 +44,51 @@ export const withdrawalConfirmed = (lang: string, v: { amount: string; account: 
     en: (x) => `Kobo Kobo: ${x.amount} from your Emergency Pot is on its way to your Access account ${x.account}.`,
     pidgin: (x) => `Kobo Kobo: ${x.amount} from your Emergency Pot dey come to your Access account ${x.account}.`,
   })(v);
+
+// ---- two-way SMS command replies ----
+
+export const balanceReply = (lang: string, v: { total: string; emergency: string; emergencyStatus: string; retirement: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) =>
+      `Kobo Kobo: Total saved is ${x.total}. Emergency Pot: ${x.emergency} (${x.emergencyStatus}). Retirement Pot: ${x.retirement} (Locked till 50). Text PAUSE to stop tomorrow sweep.`,
+    pidgin: (x) =>
+      `Kobo Kobo: Your total savings na ${x.total}. Emergency Pot: ${x.emergency} (${x.emergencyStatus}). Retirement Pot: ${x.retirement} (Locked till 50). Text PAUSE make we skip tomorrow sweep.`,
+  })(v);
+
+export const pausedReply = (lang: string, v: { until: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: Sweeps paused until ${x.until}. Text RESUME to restart sooner.`,
+    pidgin: (x) => `Kobo Kobo: We don pause your sweep till ${x.until}. Text RESUME make e continue.`,
+  })(v);
+
+export const resumedReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Sweeps resumed. Your next sweep runs at 11pm.`,
+    pidgin: () => `Kobo Kobo: Sweep don resume. Next one go run 11pm.`,
+  })({});
+
+export const rateSetReply = (lang: string, v: { rate: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: Sweep rate is now ${x.rate}%. It applies from the next nightly sweep.`,
+    pidgin: (x) => `Kobo Kobo: Your sweep rate na ${x.rate}% now. E go start from the next night sweep.`,
+  })(v);
+
+export const rateUsageReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: To change your rate text RATE and a number from 1 to 5, e.g. RATE 3.`,
+    pidgin: () => `Kobo Kobo: To change your rate, text RATE and number from 1 to 5, like RATE 3.`,
+  })({});
+
+export const helpReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: BAL = balance, PAUSE = pause 48 hours, RESUME = restart, RATE 3 = sweep 3%, HELP = this list.`,
+    pidgin: () => `Kobo Kobo: BAL = balance, PAUSE = pause 48 hours, RESUME = continue, RATE 3 = sweep 3%, HELP = this list.`,
+  })({});
+
+export const unknownReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Sorry, we did not understand that. Text HELP to see the commands.`,
+    pidgin: () => `Kobo Kobo: Sorry, we no understand that one. Text HELP to see the commands.`,
+  })({});
+
+export const notRegisteredReply = `Kobo Kobo: This number is not registered. Sign up in the Kobo Kobo app to start saving.`;

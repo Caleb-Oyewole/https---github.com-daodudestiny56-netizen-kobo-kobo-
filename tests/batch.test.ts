@@ -34,7 +34,7 @@ describe('nightly batch', () => {
     await trader('10000.00', { paused: true, pausedUntil: new Date('2026-11-09T00:00:00Z') });
     await trader('10000.00', { balance: 100_000n }); // buffer
     const held = await trader('5000000.00');
-    await trader('10000.00'); // will hit a final bank refusal
+    const refused = await trader('10000.00'); // the bank will refuse this one for good
     await makeMerchant(pool); // no RSA yet: not part of the night
 
     deps.guard = {
@@ -42,11 +42,9 @@ describe('nightly batch', () => {
         return ctx.merchantId === held.id ? { verdict: 'HOLD', alertType: 'ANOMALOUS_INFLOW', details: {} } : { verdict: 'CLEAR' };
       },
     };
-    let n = 0;
     const realDebit = deps.executor.debit.bind(deps.executor);
     deps.executor.debit = async (r) => {
-      // the 3rd merchant to reach the bank is refused: order-independent because we only count calls
-      if (++n === 3) deps.executor.failNext('debit', 'ACCOUNT_BLOCKED');
+      if (r.merchantId === refused.id) deps.executor.failNext('debit', 'ACCOUNT_BLOCKED');
       return realDebit(r);
     };
 

@@ -2,6 +2,7 @@ import { loadConfig } from '../src/config';
 import type { Deps } from '../src/deps';
 import { MockExecutor } from '../src/executors/mock';
 import { AllowAllGuard } from '../src/guard';
+import { ConsoleSmsProvider } from '../src/sms/provider';
 import { createPool, type Pool } from '../src/db/pool';
 import { koboToNaira, type Kobo } from '../src/money';
 
@@ -15,7 +16,7 @@ export const DURING = new Date('2026-11-06T14:00:00Z');
 export function makeDeps(
   pool: Pool,
   o: { now?: Date; config?: Partial<ReturnType<typeof loadConfig>>; sweep?: Partial<ReturnType<typeof loadConfig>['sweep']> } = {},
-): Deps & { executor: MockExecutor; setNow(d: Date): void } {
+): Deps & { executor: MockExecutor; sms: ConsoleSmsProvider; setNow(d: Date): void } {
   let now = o.now ?? NIGHT;
   const base = loadConfig({});
   return {
@@ -24,6 +25,7 @@ export function makeDeps(
     clock: () => now,
     executor: new MockExecutor(),
     guard: new AllowAllGuard(),
+    sms: new ConsoleSmsProvider(),
     setNow: (d: Date) => {
       now = d;
     },
