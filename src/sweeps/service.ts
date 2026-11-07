@@ -51,11 +51,11 @@ export interface MerchantRow {
   paused_until: Date | null;
 }
 
-const SWEEP_COLS = `id, merchant_id, to_char(sweep_date,'YYYY-MM-DD') AS sweep_date, status, total_takings::text, applied_rate::text,
+export const SWEEP_COLS = `id, merchant_id, to_char(sweep_date,'YYYY-MM-DD') AS sweep_date, status, total_takings::text, applied_rate::text,
   sweep_amount::text, emergency_amount::text, retirement_amount::text, pension_reference, debit_reference, failure_reason,
   attempts, last_error, executed_at`;
 
-function mapSweep(r: Record<string, any>): SweepRecord {
+export function mapSweep(r: Record<string, any>): SweepRecord {
   return {
     id: r.id,
     merchantId: r.merchant_id,
@@ -199,7 +199,7 @@ async function planAndRecord(deps: Deps, merchantId: string, sweepDate: string):
     return recordTerminal(deps, merchant, base, 'HELD_GUARD', {
       failureReason: verdict.alertType,
       alert: { type: verdict.alertType, details: verdict.details },
-      sms: { kind: 'SWEEP_HELD', body: guardHeld(merchant.preferred_language) },
+      sms: { kind: 'SWEEP_HELD', body: guardHeld(merchant.preferred_language, { selfRelease: verdict.alertType === 'ANOMALOUS_INFLOW' }) },
     });
   }
 
@@ -279,7 +279,7 @@ export async function finalizeSweep(deps: Deps, sweepId: string, debitReference:
 export const sweepKey = (merchantId: string, sweepDate: string) => `sweep:${merchantId}:${sweepDate}`;
 
 /** Debit with bounded in-run retries (exponential backoff), then settle. Safe to call again for the same PENDING row. */
-async function debitAndSettle(deps: Deps, start: SweepRecord): Promise<SweepRecord> {
+export async function debitAndSettle(deps: Deps, start: SweepRecord): Promise<SweepRecord> {
   const cfg = deps.config.sweep;
   const merchant = await loadMerchant(deps.db, start.merchantId);
   let rec = start;

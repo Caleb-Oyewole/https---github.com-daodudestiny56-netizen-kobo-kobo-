@@ -3,6 +3,7 @@ import type { Deps } from '../deps';
 import { toWatDate, WAT_TZ } from '../time';
 import { expireStaleSuggestions } from '../smart-rate/service';
 import { retryPendingWithdrawals } from '../withdrawals/service';
+import { resumeStalePendingSweeps } from './release';
 import { runNightlyBatch } from './batch';
 
 /**
@@ -32,6 +33,7 @@ export function startScheduler(deps: Deps): { stop(): void } {
   // Withdrawals whose bank outcome was unknown are replayed (same idempotency key) every minute.
   const withdrawalTimer = setInterval(() => {
     retryPendingWithdrawals(deps).catch((e) => console.error('[scheduler] withdrawal retry failed:', e));
+    resumeStalePendingSweeps(deps).catch((e) => console.error('[scheduler] stale sweep resume failed:', e));
     expireStaleSuggestions(deps).catch((e) => console.error('[scheduler] suggestion expiry failed:', e));
   }, 60_000);
   withdrawalTimer.unref();

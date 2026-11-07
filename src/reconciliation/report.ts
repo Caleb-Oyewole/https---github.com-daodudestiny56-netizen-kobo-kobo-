@@ -10,6 +10,7 @@ export type FlagCode =
   | 'STUCK_SWEEP' // PENDING: debit not confirmed yet
   | 'FAILED_SWEEP'
   | 'POT_DRIFT' // pension_accounts balance differs from the ledger
+  | 'HELD_FOR_REVIEW' // Sweep Guard hold waiting for a decision
   | 'PENDING_WITHDRAWAL';
 
 export interface Flag {
@@ -90,6 +91,9 @@ export async function reconcile(deps: Deps, sweepDate: string): Promise<Reconcil
       else if (bank.amount !== sweepAmt) add('AMOUNT_MISMATCH', s.merchant_id, `sweep ${koboToNaira(sweepAmt)} vs bank ${koboToNaira(bank.amount)}`);
     } else if (s.status === 'PENDING') {
       add('STUCK_SWEEP', s.merchant_id, bank ? 'bank debited but core never settled it (call /sweeps/settle or re-run)' : 'debit outcome not yet known');
+    } else if (s.status === 'HELD_GUARD') {
+      const open = await deps.db.query(`SELECT alert_type FROM sweep_guard_alerts WHERE sweep_id = $1 AND status = 'PENDING_REVIEW'`, [s.id]);
+      if (open.rows[0]) add('HELD_FOR_REVIEW', s.merchant_id, `held by Sweep Guard (${open.rows[0].alert_type}), takings ${koboToNaira(dbToKobo(s.takings))} not swept`);
     } else if (s.status === 'FAILED') {
       add('FAILED_SWEEP', s.merchant_id, 'bank refused the debit');
     }

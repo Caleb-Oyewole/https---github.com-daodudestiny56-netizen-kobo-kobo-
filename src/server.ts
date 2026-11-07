@@ -7,6 +7,7 @@ import { channelRoutes } from './routes/channels';
 import { reconciliationRoutes } from './routes/reconciliation';
 import { pinRoutes } from './routes/pin';
 import { smartRateRoutes } from './routes/smart-rate';
+import { guardRoutes } from './routes/guard';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
@@ -40,6 +41,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     withdrawalRoutes(internal, deps);
     pinRoutes(internal, deps);
     smartRateRoutes(internal, deps);
+    guardRoutes(internal, deps);
     reconciliationRoutes(internal, deps);
   });
 

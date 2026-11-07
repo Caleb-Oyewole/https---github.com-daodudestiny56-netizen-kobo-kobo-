@@ -87,11 +87,22 @@ suggestion and texts the trader; **it never changes `sweep_percentage`**. The ra
 one open suggestion per trader (409 `SUGGESTION_PENDING`), 72h expiry, 14-day quiet period after a `NO` (409 `SUGGESTION_COOLDOWN`),
 and a rate the trader sets themselves (USSD/SMS `RATE n`) supersedes an open suggestion.
 
+## 5d. Sweep Guard holds
+
+A held sweep (`HELD_GUARD`) moves no money and creates a `PENDING_REVIEW` alert. Ops queue: `GET /api/v1/sweep-guard/alerts?status=PENDING_REVIEW`.
+`POST /api/v1/sweep-guard/alerts/:id/resolve { decision: RELEASE|CONFIRM, resolved_by, note? }`:
+- `RELEASE` re-plans from current facts (paused? rate? buffer?), then debits with the normal idempotent flow (alert -> `DISMISSED`).
+- `CONFIRM` keeps it unswept, reason `GUARD_CONFIRMED:<type>` (alert -> `CONFIRMED`).
+Repeating a decision returns 200 with `changed:false`; the opposite one is 409 `ALERT_ALREADY_RESOLVED`; releases are refused
+after `GUARD_RELEASE_WINDOW_DAYS` (409 `RELEASE_WINDOW_PASSED`); bank down at release time is 503 `EXECUTOR_UNAVAILABLE` with nothing changed.
+Traders can self-release only `ANOMALOUS_INFLOW` holds by texting `OK`; duplicates and name mismatches need ops.
+Sweeps left PENDING on a past date are resumed every minute with the same idempotency key.
+
 ## 6. Reconciliation
 
 `GET /api/v1/reconciliation?date=YYYY-MM-DD` compares core, the bank (`/executor/debits`) and the ledger and returns
 `{ ok, totals, flags[] }` with flags `MISSING_DEBIT`, `AMOUNT_MISMATCH`, `ORPHAN_DEBIT`, `LEDGER_MISMATCH`, `STUCK_SWEEP`,
-`FAILED_SWEEP`, `POT_DRIFT`, `PENDING_WITHDRAWAL`.
+`FAILED_SWEEP`, `HELD_FOR_REVIEW`, `POT_DRIFT`, `PENDING_WITHDRAWAL`.
 
 ## Telco webhooks (Africa's Talking)
 

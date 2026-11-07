@@ -36,11 +36,15 @@ export const bufferSkipped = (lang: string, v: { buffer: string }): string =>
     pidgin: (x) => `Kobo Kobo: We no take pension money tonight so your account go still get ${x.buffer}. Your savings dey safe.`,
   })(v);
 
-export const guardHeld = (lang: string): string =>
-  pick<Record<string, never>>(lang, {
-    en: () => `Kobo Kobo: Tonight's pension sweep is on hold while we check a large payment. No money was moved.`,
-    pidgin: () => `Kobo Kobo: We hold tonight pension sweep to check one big payment. No money comot.`,
-  })({});
+export const guardHeld = (lang: string, v: { selfRelease: boolean } = { selfRelease: false }): string =>
+  pick<{ selfRelease: boolean }>(lang, {
+    en: (x) =>
+      `Kobo Kobo: Tonight's pension sweep is on hold while we check a large payment. No money was moved.` +
+      (x.selfRelease ? ` If this payment is really yours, reply OK to continue.` : ` Our team will contact you.`),
+    pidgin: (x) =>
+      `Kobo Kobo: We hold tonight pension sweep to check one big payment. No money comot.` +
+      (x.selfRelease ? ` If the money na your own, reply OK make we continue.` : ` Our team go contact you.`),
+  })(v);
 
 export const withdrawalConfirmed = (lang: string, v: { amount: string; account: string }): string =>
   pick<{ amount: string; account: string }>(lang, {
@@ -156,4 +160,36 @@ export const suggestionNone = (lang: string): string =>
   pick<Record<string, never>>(lang, {
     en: () => `Kobo Kobo: There is no rate suggestion waiting for you. Text HELP for commands.`,
     pidgin: () => `Kobo Kobo: No rate suggestion dey wait for you. Text HELP to see commands.`,
+  })({});
+
+// ---- Sweep Guard resolution ----
+
+export const guardReleasedReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Thank you. We are releasing your held sweep now. You will get a receipt shortly.`,
+    pidgin: () => `Kobo Kobo: Thank you. We dey release your held sweep now. Receipt go reach you soon.`,
+  })({});
+
+export const guardNoneReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Nothing is waiting for your OK. Text HELP for commands.`,
+    pidgin: () => `Kobo Kobo: Nothing no dey wait for your OK. Text HELP to see commands.`,
+  })({});
+
+export const guardBlockedNotice = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: After review we did not sweep that payment into your pension. Your savings are safe. Call us if you have questions.`,
+    pidgin: () => `Kobo Kobo: After we check am, we no take that money enter your pension. Your savings dey safe. Call us if you get question.`,
+  })({});
+
+export const guardReleasedNotice = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Our team cleared your held sweep. It is being processed and you will get a receipt.`,
+    pidgin: () => `Kobo Kobo: Our team don clear your held sweep. We dey process am, receipt go reach you.`,
+  })({});
+
+export const guardRetryReply = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: We could not release your held sweep right now. Our team will follow up with you.`,
+    pidgin: () => `Kobo Kobo: We no fit release your held sweep now. Our team go follow up with you.`,
   })({});
