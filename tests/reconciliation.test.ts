@@ -38,6 +38,14 @@ describe('reconciliation', () => {
     });
   });
 
+  it('reports takings from the unswept 23:00-24:00 hour as a note, not a failure', async () => {
+    const m = await sweptTrader('45000.00');
+    await addInflow(pool, m.id, '1500.00', new Date('2026-11-06T22:30:00Z'));
+    const r = await reconcile(deps, DAY);
+    expect(r.ok).toBe(true);
+    expect(r.unswept_late_inflows).toEqual({ count: 1, total: '1500.00' });
+  });
+
   it('flags a sweep the bank has no debit for', async () => {
     await sweptTrader('45000.00');
     deps.executor.debits.clear();

@@ -1,4 +1,5 @@
 import type { Deps } from '../deps';
+import { lateHour } from '../time';
 import { dbToKobo, koboToNaira, type Kobo } from '../money';
 
 export type FlagCode =
@@ -29,6 +30,8 @@ export interface ReconciliationReport {
     credited_to_pots_per_ledger: string;
     difference_core_vs_bank: string;
   };
+  /** Takings in the 23:00-24:00 hour: outside the PRD v2 window, so never swept. Informational, not a flag. */
+  unswept_late_inflows: { count: number; total: string };
   flags: Flag[];
 }
 
@@ -119,6 +122,15 @@ export async function reconcile(deps: Deps, sweepDate: string): Promise<Reconcil
   );
   for (const w of pend.rows) add('PENDING_WITHDRAWAL', w.merchant_id, `withdrawal ${w.id} of ${w.amount} awaiting bank confirmation`);
 
+  const lh = lateHour(sweepDate);
+  const late = (
+    await deps.db.query(
+      `SELECT count(*)::int AS n, COALESCE(sum(amount),0)::text AS total FROM inflow_transactions
+        WHERE NOT is_excluded_from_sweep AND settled_at >= $1 AND settled_at < $2`,
+      [lh.from, lh.to],
+    )
+  ).rows[0];
+
   return {
     sweep_date: sweepDate,
     ok: flags.length === 0,
@@ -131,6 +143,7 @@ export async function reconcile(deps: Deps, sweepDate: string): Promise<Reconcil
       credited_to_pots_per_ledger: koboToNaira(potCredits),
       difference_core_vs_bank: koboToNaira(swept - bankTotal),
     },
+    unswept_late_inflows: { count: late.n, total: late.total },
     flags,
   };
 }

@@ -95,27 +95,25 @@ function NIGHT_DATE() {
 }
 
 describe('the inflow window', () => {
-  it('counts [23:00 WAT yesterday, 23:00 WAT today) and nothing else', async () => {
+  it('counts [00:00 WAT, 23:00 WAT) of the sweep date and nothing else (PRD v2)', async () => {
     const m = await setup(null);
     const at = (iso: string, amount: string, o = {}) => addInflow(pool, m.id, amount, new Date(iso), o);
-    await at('2026-11-05T21:59:59Z', '1000.00'); // 22:59:59 WAT on the 5th -> belongs to the 5th
-    await at('2026-11-05T22:00:00Z', '2000.00'); // 23:00:00 WAT on the 5th -> first instant of the 6th's window
-    await at('2026-11-06T21:59:59Z', '3000.00'); // 22:59:59 WAT on the 6th -> last instant of the 6th's window
-    await at('2026-11-06T22:00:00Z', '4000.00'); // 23:00:00 WAT on the 6th -> belongs to the 7th
+    await at('2026-11-05T22:59:59Z', '1000.00'); // 23:59:59 WAT on the 5th -> not the 6th
+    await at('2026-11-05T23:00:00Z', '2000.00'); // 00:00:00 WAT on the 6th -> first instant of the window
+    await at('2026-11-06T21:59:59Z', '3000.00'); // 22:59:59 WAT on the 6th -> last instant of the window
+    await at('2026-11-06T22:00:00Z', '4000.00'); // 23:00:00 WAT on the 6th -> outside the window
     await at('2026-11-06T10:00:00Z', '9000.00', { excluded: true }); // loan disbursement etc.: never counted
     const rec = await executeSweepForMerchant(deps, m.id, DAY);
     expect(rec.totalTakings).toBe(500_000n); // 2,000 + 3,000
     expect(rec.sweepAmount).toBe(10_000n);
   });
 
-  it('never loses an inflow: consecutive windows tile the timeline', async () => {
+  it('takings in the 23:00-24:00 hour are in no window (surfaced by reconciliation)', async () => {
     const m = await setup(null);
     await addInflow(pool, m.id, '5000.00', new Date('2026-11-06T22:30:00Z')); // 23:30 WAT on the 6th
-    const day6 = await executeSweepForMerchant(deps, m.id, '2026-11-06');
-    expect(day6.status).toBe('SKIPPED_ZERO_SALES');
+    expect((await executeSweepForMerchant(deps, m.id, '2026-11-06')).status).toBe('SKIPPED_ZERO_SALES');
     deps.setNow(new Date('2026-11-07T22:30:00Z'));
-    const day7 = await executeSweepForMerchant(deps, m.id, '2026-11-07');
-    expect(day7.totalTakings).toBe(500_000n); // caught by the next night
+    expect((await executeSweepForMerchant(deps, m.id, '2026-11-07')).status).toBe('SKIPPED_ZERO_SALES');
   });
 });
 

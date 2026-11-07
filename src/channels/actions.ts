@@ -4,7 +4,7 @@ import { dbToKobo, rateToHundredths, type Kobo } from '../money';
 import { normalizePhone } from '../phone';
 import { computeSweepAmount } from '../split/engine';
 import { isEffectivelyPaused, loadSweep, windowInflows, type SweepRecord } from '../sweeps/service';
-import { addDays, currentSweepDate, formatWatDay } from '../time';
+import { currentSweepDate, formatWatDay } from '../time';
 import type { Eligibility } from '../withdrawals/rules';
 
 /**
@@ -75,14 +75,6 @@ export interface TodaySummary {
 export async function todaySummary(deps: Deps, m: ChannelMerchant): Promise<TodaySummary> {
   const sweepDate = currentSweepDate(deps.clock());
   const [{ total }, record] = await Promise.all([windowInflows(deps.db, m.id, sweepDate), loadSweep(deps.db, m.id, sweepDate)]);
-  // Just after 23:00 the next window has opened and is empty. If tonight's sweep already ran, show that instead.
-  if (total === 0n && !record) {
-    const prevDate = addDays(sweepDate, -1);
-    const prev = await loadSweep(deps.db, m.id, prevDate);
-    if (prev && prev.status !== 'PENDING') {
-      return { sweepDate: prevDate, takings: prev.totalTakings, projected: prev.sweepAmount, record: prev };
-    }
-  }
   const { sweep } = computeSweepAmount({ takings: total, rateHundredths: rateToHundredths(m.sweep_percentage), dailyCap: dbToKobo(m.daily_cap) });
   return { sweepDate, takings: total, projected: sweep, record };
 }

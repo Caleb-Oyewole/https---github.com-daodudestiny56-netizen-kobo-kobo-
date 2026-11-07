@@ -24,7 +24,7 @@ Errors (`{ error: { code, message } }`): 400 `INVALID_AMOUNT` or bad date, 404 `
 ## 3. Cron contract and retries
 
 Core owns the schedule. At 23:00 Africa/Lagos it runs the nightly batch itself: for each merchant it computes
-`min(floor(takings x rate), daily_cap)` over the window [23:00 D-1, 23:00 D), skips paused / zero-sales / below-buffer,
+`min(floor(takings x rate), daily_cap)` over the PRD v2 window [00:00 D, 23:00 D) WAT (takings in the 23:00-24:00 hour are in no window; reconciliation reports them as `unswept_late_inflows`), skips paused / zero-sales / below-buffer,
 asks the guard, persists the sweep as PENDING, then calls **your executor endpoints**:
 
 | Call | Contract |

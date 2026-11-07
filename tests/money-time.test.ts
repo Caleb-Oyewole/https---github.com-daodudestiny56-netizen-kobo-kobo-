@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dbToKobo, koboToNaira, nairaDisplay, parseNaira, parsePositiveNaira, percentOf, rateDisplay, rateToHundredths } from '../src/money';
-import { addDays, assertDateString, currentSweepDate, formatWatDay, sweepWindow, toWatDate } from '../src/time';
+import { addDays, assertDateString, currentSweepDate, formatWatDay, lateHour, sweepWindow, toWatDate } from '../src/time';
 import { normalizePhone } from '../src/phone';
 
 describe('money', () => {
@@ -51,18 +51,19 @@ describe('time (WAT)', () => {
     expect(toWatDate(new Date('2026-11-06T23:00:00Z'))).toBe('2026-11-07'); // 00:00 WAT
   });
 
-  it('builds contiguous sweep windows ending at 23:00 WAT', () => {
+  it('builds the PRD v2 sweep window: 00:00 to 23:00 WAT of the sweep date', () => {
     const w = sweepWindow('2026-11-06');
+    expect(w.from.toISOString()).toBe('2026-11-05T23:00:00.000Z'); // 00:00 WAT
     expect(w.to.toISOString()).toBe('2026-11-06T22:00:00.000Z'); // 23:00 WAT
-    expect(w.from.toISOString()).toBe('2026-11-05T22:00:00.000Z');
-    // Next day's window starts exactly where this one ends: nothing falls in a gap.
-    expect(sweepWindow('2026-11-07').from.toISOString()).toBe(w.to.toISOString());
+    // The 23:00-24:00 hour is covered by no window.
+    expect(lateHour('2026-11-06').from.toISOString()).toBe(w.to.toISOString());
+    expect(lateHour('2026-11-06').to.toISOString()).toBe(sweepWindow('2026-11-07').from.toISOString());
   });
 
-  it('knows which night an instant belongs to', () => {
+  it('uses the WAT calendar date as the sweep date', () => {
     expect(currentSweepDate(new Date('2026-11-06T14:00:00Z'))).toBe('2026-11-06'); // 15:00 WAT
-    expect(currentSweepDate(new Date('2026-11-06T21:59:59Z'))).toBe('2026-11-06'); // 22:59:59 WAT
-    expect(currentSweepDate(new Date('2026-11-06T22:00:00Z'))).toBe('2026-11-07'); // 23:00 WAT
+    expect(currentSweepDate(new Date('2026-11-06T22:30:00Z'))).toBe('2026-11-06'); // 23:30 WAT
+    expect(currentSweepDate(new Date('2026-11-06T23:00:00Z'))).toBe('2026-11-07'); // 00:00 WAT
   });
 
   it('validates dates and does date arithmetic', () => {

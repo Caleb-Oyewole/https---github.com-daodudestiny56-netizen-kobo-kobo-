@@ -32,20 +32,23 @@ export function sweepCutoff(dateStr: string): Date {
 }
 
 /**
- * The inflow window a sweep for `dateStr` covers: [23:00 WAT the day before, 23:00 WAT that day).
- * Contiguous windows mean no inflow is ever skipped. (PRD v2's literal 00:00-22:59:59 window would leave
- * the 23:00-23:59 hour of every day unswept.)
+ * The inflow window a sweep for `dateStr` covers, per PRD v2: [00:00 WAT, 23:00 WAT) of that date.
+ * Takings settled in the 23:00-23:59 hour fall outside every sweep; reconciliation reports them as a note.
  */
 export function sweepWindow(dateStr: string): { from: Date; to: Date } {
   const to = sweepCutoff(dateStr);
-  return { from: new Date(to.getTime() - DAY), to };
+  return { from: new Date(to.getTime() - 23 * HOUR), to };
 }
 
-/** The sweep date whose window contains `now` (i.e. which night's sweep this sale will be part of). */
+/** The 23:00-24:00 WAT hour of `dateStr`, which no sweep window covers. */
+export function lateHour(dateStr: string): { from: Date; to: Date } {
+  const from = sweepCutoff(dateStr);
+  return { from, to: new Date(from.getTime() + HOUR) };
+}
+
+/** The sweep date an instant belongs to: its WAT calendar date. */
 export function currentSweepDate(now: Date): string {
-  const wall = new Date(now.getTime() + HOUR);
-  const date = wall.toISOString().slice(0, 10);
-  return wall.getUTCHours() >= 23 ? addDays(date, 1) : date;
+  return toWatDate(now);
 }
 
 export function addDaysToInstant(d: Date, n: number): Date {
