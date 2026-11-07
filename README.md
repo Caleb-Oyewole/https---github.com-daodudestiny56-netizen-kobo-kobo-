@@ -16,4 +16,4 @@ Integration contract for the Rails service: [docs/RAILS_HANDOFF.md](docs/RAILS_H
 `EXECUTOR_MODE=mock` runs without Rails; `http` uses `RAILS_BASE_URL`.
 
 Layout: `src/split` (allocation), `src/ledger`, `src/sweeps` (service, batch, scheduler), `src/withdrawals`,
-`src/channels` (USSD, SMS), `src/sms` (outbox, dispatcher), `src/pfa`, `src/reconciliation`, `src/routes`.
+`src/channels` (USSD, SMS; en + Pidgin), `src/security` (PIN), `src/smart-rate`, `src/voice` (IVR), `src/sms` (outbox, dispatcher), `src/pfa`, `src/reconciliation`, `src/routes`.

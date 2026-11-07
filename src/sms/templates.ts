@@ -193,3 +193,9 @@ export const guardRetryReply = (lang: string): string =>
     en: () => `Kobo Kobo: We could not release your held sweep right now. Our team will follow up with you.`,
     pidgin: () => `Kobo Kobo: We no fit release your held sweep now. Our team go follow up with you.`,
   })({});
+
+export const voiceMissedPrefix = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `We tried to call you but could not reach you.`,
+    pidgin: () => `We try call you but we no reach you.`,
+  })({});

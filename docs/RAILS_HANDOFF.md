@@ -98,6 +98,14 @@ after `GUARD_RELEASE_WINDOW_DAYS` (409 `RELEASE_WINDOW_PASSED`); bank down at re
 Traders can self-release only `ANOMALOUS_INFLOW` holds by texting `OK`; duplicates and name mismatches need ops.
 Sweeps left PENDING on a past date are resumed every minute with the same idempotency key.
 
+## 5e. IVR spoken balance
+
+USSD option 6 queues one call request per trader (DB-enforced). A dispatcher places the call through Africa's Talking Voice
+(`VOICE_PROVIDER=africastalking`, `AT_VOICE_NUMBER`), passing our request id as `clientRequestId`. Set the telco's voice callback URL to
+`POST /api/v1/voice/callback?token=$WEBHOOK_TOKEN`: on answer (`isActive=1`) it returns `<Response><Say>` with the balance in English or
+Pidgin; on hang-up (`isActive=0`) an unanswered call is retried with backoff (3 attempts, `VOICE_*`), then the trader is texted the
+balance instead. Traders can also dial the number in: they are recognised by caller number. No action is needed from Rails.
+
 ## 6. Reconciliation
 
 `GET /api/v1/reconciliation?date=YYYY-MM-DD` compares core, the bank (`/executor/debits`) and the ledger and returns

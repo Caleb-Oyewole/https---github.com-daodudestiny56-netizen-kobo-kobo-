@@ -153,10 +153,11 @@ async function changePinFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: 
 }
 
 async function voiceRequest(deps: Deps, m: ChannelMerchant, t: UssdCopy) {
+  // One open request per trader (a unique index enforces it); tapping again while one is queued changes nothing.
   await deps.db.query(
-    `INSERT INTO voice_callback_requests (merchant_id, language)
-     SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM voice_callback_requests WHERE merchant_id = $1 AND status = 'PENDING')`,
-    [m.id, m.preferred_language],
+    `INSERT INTO voice_callback_requests (merchant_id, language, created_at, next_attempt_at) VALUES ($1,$2,$3,$3)
+     ON CONFLICT (merchant_id) WHERE status IN ('PENDING','CALLING') DO NOTHING`,
+    [m.id, m.preferred_language, deps.clock()],
   );
   return end(...t.voiceQueued);
 }

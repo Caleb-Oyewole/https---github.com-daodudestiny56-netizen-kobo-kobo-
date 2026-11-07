@@ -4,6 +4,7 @@ import { handleInboundSms } from '../channels/sms-commands';
 import { handleUssd } from '../channels/ussd';
 import type { Deps } from '../deps';
 import { parse } from '../http/validate';
+import { handleVoiceWebhook } from '../voice/service';
 
 /** Telco-facing webhooks (Africa's Talking / Termii). Authenticated with `?token=` instead of the service token. */
 export function channelRoutes(app: FastifyInstance, deps: Deps) {
@@ -28,5 +29,30 @@ export function channelRoutes(app: FastifyInstance, deps: Deps) {
     const b = parse(z.object({ from: z.string().min(5), text: z.string().default(''), id: z.string().optional() }).passthrough(), req.body);
     const { reply } = await handleInboundSms(deps, { from: b.from, text: b.text, messageId: b.id });
     return { reply };
+  });
+
+  /**
+   * POST /api/v1/voice/callback - Africa's Talking Voice. isActive=1 -> <Response><Say>..</Say></Response> (the spoken balance),
+   * isActive=0 (call ended) -> 204. Covers calls we placed (clientRequestId) and traders dialling in (callerNumber).
+   */
+  app.post('/api/v1/voice/callback', async (req, reply) => {
+    const b = parse(
+      z
+        .object({
+          isActive: z.string().optional(),
+          direction: z.string().optional(),
+          callerNumber: z.string().optional(),
+          destinationNumber: z.string().optional(),
+          clientRequestId: z.string().optional(),
+          sessionId: z.string().optional(),
+          callSessionState: z.string().optional(),
+          durationInSeconds: z.string().optional(),
+        })
+        .passthrough(),
+      req.body,
+    );
+    const r = await handleVoiceWebhook(deps, b);
+    if ('done' in r) return reply.code(204).send();
+    return reply.type('application/xml; charset=utf-8').send(r.xml);
   });
 }

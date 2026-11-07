@@ -7,6 +7,8 @@ import { AllowAllGuard } from './guard';
 import { startSmsDispatcher } from './sms/dispatcher';
 import { AfricasTalkingProvider, ConsoleSmsProvider } from './sms/provider';
 import { buildServer } from './server';
+import { startVoiceDispatcher } from './voice/service';
+import { AfricasTalkingVoiceProvider, ConsoleVoiceProvider } from './voice/provider';
 import { startScheduler } from './sweeps/scheduler';
 
 const config = loadConfig();
@@ -22,11 +24,18 @@ const sms =
     : new ConsoleSmsProvider(true);
 if (sms instanceof ConsoleSmsProvider) console.warn('[boot] SMS_PROVIDER=console: messages are printed, not sent.');
 
-const deps: Deps = { db: pool, config, clock: () => new Date(), executor, guard: new AllowAllGuard(), sms };
+const voice =
+  config.voice.provider === 'africastalking'
+    ? new AfricasTalkingVoiceProvider(config.sms.atUsername, config.sms.atApiKey, config.voice.callFrom)
+    : new ConsoleVoiceProvider(true);
+if (voice instanceof ConsoleVoiceProvider) console.warn('[boot] VOICE_PROVIDER=console: calls are printed, not placed.');
+
+const deps: Deps = { db: pool, config, clock: () => new Date(), executor, guard: new AllowAllGuard(), sms, voice };
 
 const app = buildServer(deps);
 const scheduler = config.scheduler.enabled ? startScheduler(deps) : null;
 const dispatcher = config.scheduler.enabled ? startSmsDispatcher(deps) : null;
+const voiceDispatcher = config.scheduler.enabled ? startVoiceDispatcher(deps) : null;
 
 await app.listen({ port: config.port, host: '0.0.0.0' });
 console.log(`[boot] kobo-core listening on :${config.port} (scheduler ${scheduler ? 'on' : 'off'})`);
@@ -35,6 +44,7 @@ const shutdown = async (signal: string) => {
   console.log(`[boot] ${signal}: shutting down`);
   scheduler?.stop();
   dispatcher?.stop();
+  voiceDispatcher?.stop();
   await app.close();
   await pool.end();
   process.exit(0);

@@ -24,6 +24,7 @@ export interface AppConfig {
   scheduler: { enabled: boolean; sweepCron: string; retryCron: string };
   sweep: SweepTuning;
   pin: { pepper: string; maxAttempts: number; lockMinutes: number; withdrawalRequired: boolean };
+  voice: { provider: 'console' | 'africastalking'; callFrom: string; maxAttempts: number; retryBaseMs: number; callTimeoutMs: number; dispatchIntervalMs: number };
   guard: { releaseWindowDays: number };
   smartRate: { expiryHours: number; declineCooldownDays: number };
   sms: {
@@ -64,6 +65,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       maxAttempts: int(env.PIN_MAX_ATTEMPTS, 3),
       lockMinutes: int(env.PIN_LOCK_MINUTES, 30),
       withdrawalRequired: bool(env.WITHDRAWAL_PIN_REQUIRED, true),
+    },
+    voice: {
+      provider: env.VOICE_PROVIDER === 'africastalking' ? 'africastalking' : 'console',
+      callFrom: env.AT_VOICE_NUMBER ?? '',
+      maxAttempts: int(env.VOICE_MAX_ATTEMPTS, 3),
+      retryBaseMs: int(env.VOICE_RETRY_BASE_MS, 60_000),
+      // How long a placed call may stay unanswered before we try again.
+      callTimeoutMs: int(env.VOICE_CALL_TIMEOUT_MS, 300_000),
+      dispatchIntervalMs: int(env.VOICE_DISPATCH_INTERVAL_MS, 10_000),
     },
     guard: { releaseWindowDays: int(env.GUARD_RELEASE_WINDOW_DAYS, 3) },
     smartRate: { expiryHours: int(env.SMART_RATE_EXPIRY_HOURS, 72), declineCooldownDays: int(env.SMART_RATE_DECLINE_COOLDOWN_DAYS, 14) },
