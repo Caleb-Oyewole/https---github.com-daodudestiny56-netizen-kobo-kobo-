@@ -17,8 +17,9 @@ Rails writes `merchants` and `inflow_transactions`; core writes `daily_sweeps`, 
 `allocations.emergency_pot` (floor of half), `allocations.retirement_pot` (remainder), `pension_reference`
 (`PEN-YYYYMMDD-NNNNNN`, reserved idempotently per merchant/date) and `ledger_entries`
 (DEBIT MERCHANT_CASH, CREDIT EMERGENCY_POT, CREDIT RETIREMENT_POT).
-Errors (`{ error: { code, message } }`): 400 invalid amount/date, 404 `MERCHANT_NOT_FOUND`, 422 `PENSION_ACCOUNT_MISSING`,
-422 `AMOUNT_EXCEEDS_ALLOWED` (above rate x takings or the daily cap). It does not move money.
+Errors (`{ error: { code, message } }`): 400 `INVALID_AMOUNT` or bad date, 404 `MERCHANT_NOT_FOUND`,
+422 `PENSION_ACCOUNT_MISSING` (issue an RSA PIN first), 422 `AMOUNT_EXCEEDS_DAILY_CAP`,
+409 `SWEEP_ALREADY_EXECUTED` / `SWEEP_ALREADY_RESOLVED`, 409 `SWEEP_AMOUNT_CONFLICT` (a pending sweep for that date has a different amount). It does not move money.
 
 ## 3. Cron contract and retries
 
