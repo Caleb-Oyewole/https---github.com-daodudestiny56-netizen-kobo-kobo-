@@ -45,7 +45,7 @@ describe('USSD navigation', () => {
     const m = await trader({ rate: '2.50' });
     const menu = await ussd(m.phone_number, '');
     expect(menu).toBe(
-      "CON Welcome to Kobo Kobo\n1. Check Balance\n2. Today's Takings & Sweep\n3. Change Sweep Rate (Now: 2.5%)\n4. Pause / Resume Sweeps\n5. Emergency Withdrawal\n6. Spoken Balance (Voice Call)",
+      "CON Kobo Kobo\n1. Balance\n2. Today's Takings & Sweep\n3. Sweep Rate (Now: 2.5%)\n4. Pause / Resume Sweeps\n5. Emergency Withdrawal\n6. Spoken Balance (Call)",
     );
     expect(await ussd(m.phone_number, '1*0')).toBe(menu);
     expect(await ussd(m.phone_number, '5*1500*99')).toBe(menu);
@@ -59,7 +59,7 @@ describe('USSD navigation', () => {
 
   it('accepts the local 080... number format', async () => {
     const m = await trader({ phone: '+2348031230000' });
-    expect(await ussd('08031230000', '')).toMatch(/^CON Welcome/);
+    expect(await ussd('08031230000', '')).toMatch(/^CON Kobo Kobo\n1\./);
     void m;
   });
 });
@@ -137,7 +137,7 @@ describe('USSD: emergency withdrawal', () => {
     expect(deps.executor.calls.credit).toBe(0);
     expect(await ussd(m.phone_number, '5*1,500')).toMatch(/^CON Withdraw N1,500 /);
     expect(await ussd(m.phone_number, '5*abc')).toMatch(/^END Invalid amount/);
-    expect(await ussd(m.phone_number, '5*0')).toMatch(/^CON Welcome/); // "0" is Back, so we land on the main menu
+    expect(await ussd(m.phone_number, '5*0')).toMatch(/^CON Kobo Kobo\n1\./); // "0" is Back, so we land on the main menu
     expect(await ussd(m.phone_number, '5*-5')).toMatch(/^END Invalid amount/);
     expect(await ussd(m.phone_number, '5*5001')).toBe('END You only have N5,000 in your Emergency Pot.');
   });
@@ -166,6 +166,55 @@ describe('USSD: spoken balance', () => {
     await ussd(m.phone_number, '6');
     const { rows } = await pool.query('SELECT merchant_id, language, status FROM voice_callback_requests');
     expect(rows).toEqual([{ merchant_id: m.id, language: 'yoruba', status: 'PENDING' }]);
+  });
+});
+
+describe('Nigerian Pidgin', () => {
+  const pidginTrader = (o: Parameters<typeof makeTrader>[1] = {}) => trader({ language: 'pidgin', ...o });
+
+  it('speaks Pidgin on every USSD screen and stays within one screen', async () => {
+    const m = await pidginTrader();
+    expect(await ussd(m.phone_number, '')).toBe(
+      'CON Kobo Kobo\n1. Check Balance\n2. Today Sales & Sweep\n3. Change Sweep Rate (Now: 2%)\n4. Pause / Resume Sweep\n5. Emergency Money\n6. Hear Balance (Call me)',
+    );
+    expect(await ussd(m.phone_number, '1')).toBe('CON Your Kobo Kobo Balance\nTotal: N368\nEmergency: N184 (You fit collect)\nRetirement: N184 (Lock till 50)\n0. Back');
+    expect(await ussd(m.phone_number, '3')).toMatch(/^CON Put your new sweep rate/);
+    expect(await ussd(m.phone_number, '3*9')).toMatch(/^END Rate no correct/);
+    expect(await ussd(m.phone_number, '3*3')).toMatch(/^END Correct! Your sweep rate na 3% now/);
+    expect(await ussd(m.phone_number, '4')).toMatch(/^CON Sweep dey run/);
+    expect(await ussd(m.phone_number, '4*1')).toMatch(/^END We don pause your sweep till 8 Nov 2026/);
+    expect(await ussd(m.phone_number, '4')).toMatch(/^CON Sweep dey pause till 8 Nov 2026/);
+    expect(await ussd(m.phone_number, '4*1')).toMatch(/^END Sweep don continue/);
+    expect(await ussd(m.phone_number, '7')).toMatch(/^END That choice no correct/);
+    expect(await ussd(m.phone_number, '6')).toMatch(/^END We go call you soon/);
+  });
+
+  it('Pidgin withdrawal flow, refusals and closed pot', async () => {
+    const m = await pidginTrader();
+    expect(await ussd(m.phone_number, '5')).toMatch(/^CON Emergency Pot: N184\nPut the naira/);
+    expect(await ussd(m.phone_number, '5*100')).toBe(`CON Collect N100 go Access ****${m.access_nuban.slice(-4)}?\n1. Yes\n2. No`);
+    expect(await ussd(m.phone_number, '5*100*2')).toBe('END We don cancel am. No money comot.');
+    expect(await ussd(m.phone_number, '5*500')).toBe('END Na only N184 dey your Emergency Pot.');
+    expect(await ussd(m.phone_number, '5*abc')).toMatch(/^END Amount no correct/);
+    const young = await pidginTrader({ pension: { emergency: '10.00', retirement: '10.00', firstContributionAt: addMonthsToInstant(DURING, -1) } });
+    expect(await ussd(young.phone_number, '5')).toBe('END You no fit collect Emergency money now: E go open 6 Jan 2027.');
+  });
+
+  it("Pidgin today screen, and English remains the fallback for languages without copy", async () => {
+    const m = await pidginTrader();
+    await addInflow(pool, m.id, '28000.00', DURING);
+    expect(await ussd(m.phone_number, '2')).toBe('END Sales so far: N28,000\nSweep tonight (2%): N560\nSweep dey run 11pm.');
+    const yoruba = await trader({ language: 'yoruba' });
+    expect(await ussd(yoruba.phone_number, '')).toMatch(/^CON Kobo Kobo\n1\. Balance/);
+  });
+
+  it('Pidgin SMS: balance status, unknown, help and pause texts', async () => {
+    const m = await pidginTrader({ pension: { emergency: '10.00', retirement: '10.00', firstContributionAt: addMonthsToInstant(DURING, -1) } });
+    const sms = async (text: string) => (await app.inject({ method: 'POST', url: '/api/v1/sms/inbound', payload: { from: m.phone_number, text } })).json().reply;
+    expect(await sms('BAL')).toContain('Emergency Pot: N10 (E go open 6 Jan 2027)');
+    expect(await sms('PAUSE')).toMatch(/We don pause your sweep till 8 Nov 2026/);
+    expect(await sms('RESUME')).toBe('Kobo Kobo: Sweep don resume. Next one go run 11pm.');
+    expect(await sms('RATE 9')).toMatch(/To change your rate, text RATE and number/);
   });
 });
 

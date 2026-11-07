@@ -2,9 +2,9 @@ import type { Deps } from '../deps';
 import { nairaDisplay, rateDisplay } from '../money';
 import { getPensionSummary } from '../pension/summary';
 import { enqueueSms } from '../sms/outbox';
-import { balanceReply, helpReply, notRegisteredReply, pausedReply, rateSetReply, rateUsageReply, resumedReply, unknownReply } from '../sms/templates';
+import { balanceReply, emergencyStatusText, helpReply, notRegisteredReply, pausedReply, rateSetReply, rateUsageReply, resumedReply, unknownReply } from '../sms/templates';
 import { formatWatDay } from '../time';
-import { emergencyStatus, findMerchantByPhone, parseRate, pauseSweeps, resumeSweeps, setSweepRate } from './actions';
+import { findMerchantByPhone, parseRate, pauseSweeps, resumeSweeps, setSweepRate } from './actions';
 
 /**
  * Two-way SMS: BAL, PAUSE (alias STOP), RESUME (alias START), RATE n, HELP.
@@ -26,7 +26,7 @@ export async function handleInboundSms(deps: Deps, input: { from: string; text: 
       reply = balanceReply(lang, {
         total: nairaDisplay(s.total),
         emergency: nairaDisplay(s.emergency),
-        emergencyStatus: emergencyStatus(s.eligibility),
+        emergencyStatus: emergencyStatusText(lang, s.eligibility),
         retirement: nairaDisplay(s.retirement),
       });
       break;

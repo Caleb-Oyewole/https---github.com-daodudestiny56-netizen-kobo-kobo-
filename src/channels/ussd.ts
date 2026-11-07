@@ -3,9 +3,10 @@ import type { Deps } from '../deps';
 import { nairaDisplay, parsePositiveNaira, rateDisplay, rateToHundredths } from '../money';
 import { getPensionSummary } from '../pension/summary';
 import { formatWatDay } from '../time';
+import { emergencyStatusText } from '../sms/templates';
+import { ussdCopy, type UssdCopy } from './ussd-copy';
 import { maskNuban, requestEmergencyWithdrawal } from '../withdrawals/service';
 import {
-  emergencyStatus,
   findMerchantByPhone,
   isPausedNow,
   parseRate,
@@ -35,132 +36,103 @@ export function resolvePath(text: string): string[] {
   return out;
 }
 
-function mainMenu(m: ChannelMerchant): string {
-  return con(
-    'Welcome to Kobo Kobo',
-    '1. Check Balance',
-    "2. Today's Takings & Sweep",
-    `3. Change Sweep Rate (Now: ${rateDisplay(rateToHundredths(m.sweep_percentage))}%)`,
-    '4. Pause / Resume Sweeps',
-    '5. Emergency Withdrawal',
-    '6. Spoken Balance (Voice Call)',
-  );
-}
-
 export async function handleUssd(deps: Deps, input: { phoneNumber: string; text: string }): Promise<string> {
   const merchant = await findMerchantByPhone(deps.db, input.phoneNumber);
-  if (!merchant) return end('This number is not registered on Kobo Kobo. Sign up in the app to start saving.');
+  if (!merchant) return end(...ussdCopy('en').notRegistered); // unknown number: no language on file
+  const t = ussdCopy(merchant.preferred_language);
 
   const path = resolvePath(input.text ?? '');
   const [choice, ...rest] = path;
-  if (choice === undefined) return mainMenu(merchant);
+  if (choice === undefined) return con(...t.menu(rateDisplay(rateToHundredths(merchant.sweep_percentage))));
 
   try {
     switch (choice) {
       case '1':
-        return await balanceScreen(deps, merchant);
+        return await balanceScreen(deps, merchant, t);
       case '2':
-        return await todayScreen(deps, merchant);
+        return await todayScreen(deps, merchant, t);
       case '3':
-        return await rateFlow(deps, merchant, rest);
+        return await rateFlow(deps, merchant, rest, t);
       case '4':
-        return await pauseFlow(deps, merchant, rest);
+        return await pauseFlow(deps, merchant, rest, t);
       case '5':
-        return await withdrawFlow(deps, merchant, rest);
+        return await withdrawFlow(deps, merchant, rest, t);
       case '6':
-        return await voiceRequest(deps, merchant);
+        return await voiceRequest(deps, merchant, t);
       default:
-        return end('Invalid choice. Dial again to start over.');
+        return end(...t.invalidChoice);
     }
   } catch (e) {
     if (e instanceof AppError && e.status < 500) return end(e.message);
     console.error('[ussd] unhandled error', e);
-    return end('Sorry, something went wrong. Please try again shortly.');
+    return end(...t.oops);
   }
 }
 
-async function balanceScreen(deps: Deps, m: ChannelMerchant) {
+async function balanceScreen(deps: Deps, m: ChannelMerchant, t: UssdCopy) {
   const s = await getPensionSummary(deps.db, m.id, deps.clock());
-  return con(
-    'Kobo Kobo Balance',
-    `Total: ${nairaDisplay(s.total)}`,
-    `Emergency: ${nairaDisplay(s.emergency)} (${s.eligibility.eligible ? 'Eligible' : emergencyStatus(s.eligibility)})`,
-    `Retirement: ${nairaDisplay(s.retirement)} (Locked to 50)`,
-    '0. Back',
+  return con(...t.balance({ total: nairaDisplay(s.total), emergency: nairaDisplay(s.emergency), eligibility: s.eligibility, retirement: nairaDisplay(s.retirement) }));
+}
+
+async function todayScreen(deps: Deps, m: ChannelMerchant, t: UssdCopy) {
+  const r = await todaySummary(deps, m);
+  if (r.record?.status === 'EXECUTED') return end(...t.todayDone({ amount: nairaDisplay(r.record.sweepAmount), ref: r.record.pensionReference! }));
+  return end(
+    ...t.todayOpen({
+      takings: nairaDisplay(r.takings),
+      rate: rateDisplay(rateToHundredths(m.sweep_percentage)),
+      projected: nairaDisplay(r.projected),
+      paused: isPausedNow(m, deps.clock()),
+    }),
   );
 }
 
-async function todayScreen(deps: Deps, m: ChannelMerchant) {
-  const t = await todaySummary(deps, m);
-  const rate = rateDisplay(rateToHundredths(m.sweep_percentage));
-  if (t.record?.status === 'EXECUTED') {
-    return end(`Tonight's sweep is done: ${nairaDisplay(t.record.sweepAmount)} saved.`, `Ref ${t.record.pensionReference}`);
-  }
-  const lines = [`Takings so far: ${nairaDisplay(t.takings)}`];
-  if (isPausedNow(m, deps.clock())) {
-    lines.push('Sweeps are paused: nothing will be taken tonight.');
-  } else {
-    lines.push(`Sweep tonight (${rate}%): ${nairaDisplay(t.projected)}`, 'Sweeps run at 11pm.');
-  }
-  return end(...lines);
-}
-
-async function rateFlow(deps: Deps, m: ChannelMerchant, rest: string[]) {
-  if (rest.length === 0) {
-    return con('Enter your new sweep rate, 1 to 5 (e.g. 2 or 2.5).', `Now: ${rateDisplay(rateToHundredths(m.sweep_percentage))}%`, '0. Back');
-  }
+async function rateFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: UssdCopy) {
+  if (rest.length === 0) return con(...t.ratePrompt(rateDisplay(rateToHundredths(m.sweep_percentage))));
   const h = parseRate(rest[rest.length - 1]);
-  if (h === null) return end('Invalid rate. Use a number from 1 to 5. Dial again to retry.');
+  if (h === null) return end(...t.rateInvalid);
   await setSweepRate(deps.db, m.id, h);
-  return end(`Done! Your sweep rate is now ${rateDisplay(h)}%.`, 'It applies from the next nightly sweep.');
+  return end(...t.rateDone(rateDisplay(h)));
 }
 
-async function pauseFlow(deps: Deps, m: ChannelMerchant, rest: string[]) {
+async function pauseFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: UssdCopy) {
   const paused = isPausedNow(m, deps.clock());
-  if (rest.length === 0) {
-    return paused
-      ? con(`Sweeps are paused${m.paused_until ? ` until ${formatWatDay(m.paused_until)}` : ''}.`, '1. Resume now', '0. Back')
-      : con('Sweeps are on.', '1. Pause for 48 hours', '0. Back');
-  }
-  if (rest[0] !== '1') return end('Invalid choice. Dial again to start over.');
+  if (rest.length === 0) return paused ? con(...t.pauseOff(m.paused_until ? formatWatDay(m.paused_until) : null)) : con(...t.pauseOn);
+  if (rest[0] !== '1') return end(...t.invalidChoice);
   if (paused) {
     await resumeSweeps(deps.db, m.id);
-    return end('Sweeps resumed. Your next sweep runs at 11pm.');
+    return end(...t.resumed);
   }
   const until = await pauseSweeps(deps, m.id);
-  return end(`Sweeps paused until ${formatWatDay(until)}.`, 'Dial again to resume sooner.');
+  return end(...t.paused(formatWatDay(until)));
 }
 
-async function withdrawFlow(deps: Deps, m: ChannelMerchant, rest: string[]) {
+async function withdrawFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: UssdCopy) {
   const s = await getPensionSummary(deps.db, m.id, deps.clock());
-  if (!s.eligibility.eligible) return end(`Emergency cashout unavailable: ${emergencyStatus(s.eligibility)}.`);
+  if (!s.eligibility.eligible) return end(...t.withdrawUnavailable(emergencyStatusText(m.preferred_language, s.eligibility, true)));
 
-  if (rest.length === 0) {
-    return con(`Emergency Pot: ${nairaDisplay(s.emergency)}`, 'Enter amount in naira to withdraw to your Access account:', '0. Back');
-  }
+  if (rest.length === 0) return con(...t.withdrawPrompt(nairaDisplay(s.emergency)));
   let amount;
   try {
     amount = parsePositiveNaira(rest[0].replace(/,/g, ''));
   } catch {
-    return end('Invalid amount. Dial again and enter naira, e.g. 1500.');
+    return end(...t.withdrawInvalid);
   }
-  if (amount > s.emergency) return end(`You only have ${nairaDisplay(s.emergency)} in your Emergency Pot.`);
+  if (amount > s.emergency) return end(...t.withdrawTooMuch(nairaDisplay(s.emergency)));
 
-  if (rest.length === 1) {
-    return con(`Withdraw ${nairaDisplay(amount)} to Access ${maskNuban(m.access_nuban)}?`, '1. Yes', '2. No');
-  }
-  if (rest[1] !== '1') return end('Cancelled. No money was moved.');
+  if (rest.length === 1) return con(...t.withdrawConfirm(nairaDisplay(amount), maskNuban(m.access_nuban)));
+  if (rest[1] !== '1') return end(...t.cancelled);
 
   const w = await requestEmergencyWithdrawal(deps, { merchantId: m.id, amount });
-  if (w.status === 'REJECTED') return end('The bank could not process this. Your money is safe in the Emergency Pot.');
-  return end(`${nairaDisplay(amount)} is on its way to your Access account ${maskNuban(m.access_nuban)}.`);
+  if (w.status === 'REJECTED') return end(...t.withdrawRejected);
+  return end(...t.withdrawOk(nairaDisplay(amount), maskNuban(m.access_nuban)));
 }
 
-async function voiceRequest(deps: Deps, m: ChannelMerchant) {
+async function voiceRequest(deps: Deps, m: ChannelMerchant, t: UssdCopy) {
   await deps.db.query(
     `INSERT INTO voice_callback_requests (merchant_id, language)
      SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM voice_callback_requests WHERE merchant_id = $1 AND status = 'PENDING')`,
     [m.id, m.preferred_language],
   );
-  return end('You will get a call shortly with your balance. Thank you for saving with Kobo Kobo.');
+  return end(...t.voiceQueued);
 }

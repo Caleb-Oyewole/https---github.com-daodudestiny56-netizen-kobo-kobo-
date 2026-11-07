@@ -4,8 +4,7 @@ import { dbToKobo, rateToHundredths, type Kobo } from '../money';
 import { normalizePhone } from '../phone';
 import { computeSweepAmount } from '../split/engine';
 import { isEffectivelyPaused, loadSweep, windowInflows, type SweepRecord } from '../sweeps/service';
-import { currentSweepDate, formatWatDay } from '../time';
-import type { Eligibility } from '../withdrawals/rules';
+import { currentSweepDate } from '../time';
 
 /**
  * Things a trader can do from a feature phone, shared by USSD and two-way SMS so both behave identically.
@@ -77,19 +76,4 @@ export async function todaySummary(deps: Deps, m: ChannelMerchant): Promise<Toda
   const [{ total }, record] = await Promise.all([windowInflows(deps.db, m.id, sweepDate), loadSweep(deps.db, m.id, sweepDate)]);
   const { sweep } = computeSweepAmount({ takings: total, rateHundredths: rateToHundredths(m.sweep_percentage), dailyCap: dbToKobo(m.daily_cap) });
   return { sweepDate, takings: total, projected: sweep, record };
-}
-
-/** Short human text for the Emergency Pot status. */
-export function emergencyStatus(e: Eligibility): string {
-  if (e.eligible) return 'Eligible for payout';
-  switch (e.reason) {
-    case 'NOT_VESTED':
-      return `Opens ${formatWatDay(e.eligibleOn!)}`;
-    case 'COOLDOWN_ACTIVE':
-      return `Next payout ${formatWatDay(e.eligibleOn!)}`;
-    case 'EMPTY':
-      return 'Empty';
-    default:
-      return 'Opens 3 months after first saving';
-  }
 }

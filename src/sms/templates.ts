@@ -3,6 +3,9 @@
  * feature phones cannot render the naira sign. English and Nigerian Pidgin are written; Yoruba, Hausa and Igbo
  * fall back to English until the copy is translated.
  */
+import type { Eligibility } from '../withdrawals/rules';
+import { formatWatDay } from '../time';
+
 export type Lang = 'en' | 'pidgin' | 'yoruba' | 'hausa' | 'igbo';
 
 type Copy<V> = { en: (v: V) => string; pidgin?: (v: V) => string };
@@ -92,3 +95,19 @@ export const unknownReply = (lang: string): string =>
   })({});
 
 export const notRegisteredReply = `Kobo Kobo: This number is not registered. Sign up in the Kobo Kobo app to start saving.`;
+
+/** Emergency Pot status in the trader's language. `short` is the USSD wording (tight on space). */
+export function emergencyStatusText(lang: string, e: Eligibility, short = false): string {
+  const p = lang === 'pidgin';
+  if (e.eligible) return p ? (short ? 'You fit collect' : 'You fit collect am') : short ? 'Eligible' : 'Eligible for payout';
+  switch (e.reason) {
+    case 'NOT_VESTED':
+      return `${p ? 'E go open' : 'Opens'} ${formatWatDay(e.eligibleOn!)}`;
+    case 'COOLDOWN_ACTIVE':
+      return `${p ? 'Next collect' : 'Next payout'} ${formatWatDay(e.eligibleOn!)}`;
+    case 'EMPTY':
+      return p ? 'E empty' : 'Empty';
+    default:
+      return p ? 'E open 3 months after you start' : 'Opens 3 months after first saving';
+  }
+}
