@@ -5,6 +5,7 @@ import type { Deps } from './deps';
 import { serviceAuth } from './http/auth';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
+import { sweepRoutes } from './routes/sweeps';
 
 export function buildServer(deps: Deps): FastifyInstance {
   const app = Fastify({ logger: false });
@@ -30,6 +31,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     internal.addHook('preHandler', serviceAuth(deps.config.serviceToken));
     splitRoutes(internal, deps);
     pfaRoutes(internal, deps);
+    sweepRoutes(internal, deps);
   });
 
   return app;

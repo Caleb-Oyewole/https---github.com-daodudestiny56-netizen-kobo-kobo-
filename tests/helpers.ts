@@ -1,15 +1,29 @@
 import { loadConfig } from '../src/config';
 import type { Deps } from '../src/deps';
+import { MockExecutor } from '../src/executors/mock';
+import { AllowAllGuard } from '../src/guard';
 import { createPool, type Pool } from '../src/db/pool';
 import { koboToNaira, type Kobo } from '../src/money';
 
-/** Deps with a controllable clock (default: 2026-11-06 14:00 WAT). */
-export function makeDeps(pool: Pool, o: { now?: Date; config?: Partial<ReturnType<typeof loadConfig>> } = {}): Deps & { setNow(d: Date): void } {
-  let now = o.now ?? new Date('2026-11-06T13:00:00Z');
+/** Night of 2026-11-06: 23:30 WAT, i.e. after the 23:00 cut-off, so that day's window is closed. */
+export const NIGHT = new Date('2026-11-06T22:30:00Z');
+export const DAY = '2026-11-06';
+/** An instant inside DAY's sweep window (15:00 WAT on the 6th). */
+export const DURING = new Date('2026-11-06T14:00:00Z');
+
+/** Deps with a controllable clock, a MockExecutor, an allow-all guard and zero backoff so retries are instant. */
+export function makeDeps(
+  pool: Pool,
+  o: { now?: Date; config?: Partial<ReturnType<typeof loadConfig>>; sweep?: Partial<ReturnType<typeof loadConfig>['sweep']> } = {},
+): Deps & { executor: MockExecutor; setNow(d: Date): void } {
+  let now = o.now ?? NIGHT;
+  const base = loadConfig({});
   return {
     db: pool,
-    config: { ...loadConfig({}), ...o.config },
+    config: { ...base, ...o.config, sweep: { ...base.sweep, backoffBaseMs: 0, ...o.sweep } },
     clock: () => now,
+    executor: new MockExecutor(),
+    guard: new AllowAllGuard(),
     setNow: (d: Date) => {
       now = d;
     },
