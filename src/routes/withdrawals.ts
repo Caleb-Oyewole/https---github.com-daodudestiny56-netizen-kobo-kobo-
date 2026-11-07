@@ -3,13 +3,16 @@ import { z } from 'zod';
 import type { Deps } from '../deps';
 import { parse } from '../http/validate';
 import { koboToNaira, parsePositiveNaira } from '../money';
+import { hasPin, verifyPin } from '../security/pin';
 import { getPensionSummary } from '../pension/summary';
 import { requestEmergencyWithdrawal } from '../withdrawals/service';
 
 export function withdrawalRoutes(app: FastifyInstance, deps: Deps) {
-  /** POST /api/v1/withdrawals { merchant_id, amount } -> emergency pot -> merchant's own Access account. */
+  /** POST /api/v1/withdrawals { merchant_id, amount, pin } -> emergency pot -> merchant's own Access account. */
   app.post('/api/v1/withdrawals', async (req, reply) => {
-    const b = parse(z.object({ merchant_id: z.string().uuid(), amount: z.union([z.string(), z.number()]) }), req.body);
+    const b = parse(z.object({ merchant_id: z.string().uuid(), amount: z.union([z.string(), z.number()]), pin: z.string().optional() }), req.body);
+    // Money-out needs the PIN. Checked before anything is reserved; wrong guesses count toward the lockout.
+    if (deps.config.pin.withdrawalRequired) await verifyPin(deps, b.merchant_id, b.pin ?? '');
     const w = await requestEmergencyWithdrawal(deps, { merchantId: b.merchant_id, amount: parsePositiveNaira(b.amount) });
     reply.code(201);
     return {
@@ -36,6 +39,7 @@ export function withdrawalRoutes(app: FastifyInstance, deps: Deps) {
       total_saved: koboToNaira(s.total),
       first_contribution_at: s.firstContributionAt?.toISOString() ?? null,
       last_withdrawal_at: s.lastWithdrawalAt?.toISOString() ?? null,
+      pin_set: await hasPin(deps, id),
       emergency_withdrawal: {
         eligible: s.eligibility.eligible,
         reason: s.eligibility.reason ?? null,

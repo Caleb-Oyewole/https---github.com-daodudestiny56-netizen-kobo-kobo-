@@ -5,6 +5,7 @@ import type { Deps } from './deps';
 import { serviceAuth, webhookAuth } from './http/auth';
 import { channelRoutes } from './routes/channels';
 import { reconciliationRoutes } from './routes/reconciliation';
+import { pinRoutes } from './routes/pin';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
@@ -36,6 +37,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     pfaRoutes(internal, deps);
     sweepRoutes(internal, deps);
     withdrawalRoutes(internal, deps);
+    pinRoutes(internal, deps);
     reconciliationRoutes(internal, deps);
   });
 

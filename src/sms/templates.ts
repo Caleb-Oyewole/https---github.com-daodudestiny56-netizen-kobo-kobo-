@@ -111,3 +111,23 @@ export function emergencyStatusText(lang: string, e: Eligibility, short = false)
       return p ? 'E open 3 months after you start' : 'Opens 3 months after first saving';
   }
 }
+
+// ---- security notices ----
+
+export const pinSetNotice = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Your PIN is set. You need it for emergency withdrawals. Never share it with anyone.`,
+    pidgin: () => `Kobo Kobo: Your PIN don set. You go need am to collect Emergency money. No tell anybody your PIN.`,
+  })({});
+
+export const pinChangedNotice = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: Your PIN was changed. If this was not you, call us now.`,
+    pidgin: () => `Kobo Kobo: Your PIN don change. If no be you do am, call us now now.`,
+  })({});
+
+export const pinLockedNotice = (lang: string, v: { minutes: number }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: Wrong PIN too many times. Withdrawals are locked for ${x.minutes} minutes. If this was not you, call us.`,
+    pidgin: (x) => `Kobo Kobo: Dem enter wrong PIN many times. We lock withdrawal for ${x.minutes} minutes. If no be you, call us.`,
+  })(v);

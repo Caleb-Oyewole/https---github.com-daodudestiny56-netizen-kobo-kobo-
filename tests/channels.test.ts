@@ -17,7 +17,7 @@ beforeEach(async () => {
 afterAll(() => pool.end());
 
 const vestedPension = { emergency: '184.00', retirement: '184.00', firstContributionAt: addMonthsToInstant(DURING, -4) };
-const trader = (o: Parameters<typeof makeTrader>[1] = {}) => makeTrader(pool, { pension: vestedPension, ...o });
+const trader = (o: Parameters<typeof makeTrader>[1] = {}) => makeTrader(pool, { pin: '7391', pension: vestedPension, ...o });
 const merchantRow = async (id: string) =>
   (await pool.query('SELECT sweep_percentage::text rate, is_paused, paused_until FROM merchants WHERE id=$1', [id])).rows[0];
 
@@ -45,7 +45,7 @@ describe('USSD navigation', () => {
     const m = await trader({ rate: '2.50' });
     const menu = await ussd(m.phone_number, '');
     expect(menu).toBe(
-      "CON Kobo Kobo\n1. Balance\n2. Today's Takings & Sweep\n3. Sweep Rate (Now: 2.5%)\n4. Pause / Resume Sweeps\n5. Emergency Withdrawal\n6. Spoken Balance (Call)",
+      "CON Kobo Kobo\n1. Balance\n2. Today's Takings & Sweep\n3. Sweep Rate (Now: 2.5%)\n4. Pause / Resume Sweeps\n5. Emergency Withdrawal\n6. Spoken Balance (Call)\n7. Change PIN",
     );
     expect(await ussd(m.phone_number, '1*0')).toBe(menu);
     expect(await ussd(m.phone_number, '5*1500*99')).toBe(menu);
@@ -126,7 +126,8 @@ describe('USSD: emergency withdrawal', () => {
     const m = await trader();
     expect(await ussd(m.phone_number, '5')).toBe('CON Emergency Pot: N184\nEnter amount in naira to withdraw to your Access account:\n0. Back');
     expect(await ussd(m.phone_number, '5*100')).toBe(`CON Withdraw N100 to Access ****${m.access_nuban.slice(-4)}?\n1. Yes\n2. No`);
-    expect(await ussd(m.phone_number, '5*100*1')).toBe(`END N100 is on its way to your Access account ****${m.access_nuban.slice(-4)}.`);
+    expect(await ussd(m.phone_number, '5*100*1')).toBe('CON Enter your 4-digit PIN to confirm:');
+    expect(await ussd(m.phone_number, '5*100*1*7391')).toBe(`END N100 is on its way to your Access account ****${m.access_nuban.slice(-4)}.`);
     expect(deps.executor.balances.get(m.access_nuban)).toBe(10_000n);
     expect((await pool.query('SELECT emergency_balance::text e FROM pension_accounts WHERE merchant_id=$1', [m.id])).rows[0].e).toBe('84.00');
   });
@@ -147,14 +148,14 @@ describe('USSD: emergency withdrawal', () => {
     expect(await ussd(young.phone_number, '5')).toMatch(/^END Emergency cashout unavailable: Opens 6 Jan 2027\./);
 
     const m = await trader();
-    await ussd(m.phone_number, '5*50*1');
+    await ussd(m.phone_number, '5*50*1*7391');
     expect(await ussd(m.phone_number, '5')).toMatch(/^END Emergency cashout unavailable: Next payout 5 Jan 2027\./);
   });
 
   it('a bank refusal says the money is safe', async () => {
     const m = await trader();
     deps.executor.failNext('credit', 'ACCOUNT_BLOCKED');
-    expect(await ussd(m.phone_number, '5*50*1')).toBe('END The bank could not process this. Your money is safe in the Emergency Pot.');
+    expect(await ussd(m.phone_number, '5*50*1*7391')).toBe('END The bank could not process this. Your money is safe in the Emergency Pot.');
     expect((await pool.query('SELECT emergency_balance::text e FROM pension_accounts WHERE merchant_id=$1', [m.id])).rows[0].e).toBe('184.00');
   });
 });
@@ -175,7 +176,7 @@ describe('Nigerian Pidgin', () => {
   it('speaks Pidgin on every USSD screen and stays within one screen', async () => {
     const m = await pidginTrader();
     expect(await ussd(m.phone_number, '')).toBe(
-      'CON Kobo Kobo\n1. Check Balance\n2. Today Sales & Sweep\n3. Change Sweep Rate (Now: 2%)\n4. Pause / Resume Sweep\n5. Emergency Money\n6. Hear Balance (Call me)',
+      'CON Kobo Kobo\n1. Check Balance\n2. Today Sales & Sweep\n3. Change Sweep Rate (Now: 2%)\n4. Pause / Resume Sweep\n5. Emergency Money\n6. Hear Balance (Call me)\n7. Change PIN',
     );
     expect(await ussd(m.phone_number, '1')).toBe('CON Your Kobo Kobo Balance\nTotal: N368\nEmergency: N184 (You fit collect)\nRetirement: N184 (Lock till 50)\n0. Back');
     expect(await ussd(m.phone_number, '3')).toMatch(/^CON Put your new sweep rate/);
@@ -185,7 +186,7 @@ describe('Nigerian Pidgin', () => {
     expect(await ussd(m.phone_number, '4*1')).toMatch(/^END We don pause your sweep till 8 Nov 2026/);
     expect(await ussd(m.phone_number, '4')).toMatch(/^CON Sweep dey pause till 8 Nov 2026/);
     expect(await ussd(m.phone_number, '4*1')).toMatch(/^END Sweep don continue/);
-    expect(await ussd(m.phone_number, '7')).toMatch(/^END That choice no correct/);
+    expect(await ussd(m.phone_number, '8')).toMatch(/^END That choice no correct/);
     expect(await ussd(m.phone_number, '6')).toMatch(/^END We go call you soon/);
   });
 

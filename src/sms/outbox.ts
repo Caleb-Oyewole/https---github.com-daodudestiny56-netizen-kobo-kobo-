@@ -1,6 +1,6 @@
 import type { Queryable } from '../db/pool';
 
-export type SmsKind = 'SWEEP_RECEIPT' | 'SWEEP_SKIPPED' | 'SWEEP_HELD' | 'COMMAND_REPLY' | 'WITHDRAWAL';
+export type SmsKind = 'SWEEP_RECEIPT' | 'SWEEP_SKIPPED' | 'SWEEP_HELD' | 'COMMAND_REPLY' | 'WITHDRAWAL' | 'SECURITY' | 'SMART_RATE' | 'GUARD';
 
 /**
  * Queue an SMS. Call it with the same transaction client as the event that caused it, so a text exists if and only

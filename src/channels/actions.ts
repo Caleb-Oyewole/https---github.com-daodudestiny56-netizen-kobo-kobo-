@@ -21,13 +21,14 @@ export interface ChannelMerchant {
   daily_cap: string;
   is_paused: boolean;
   paused_until: Date | null;
+  has_pin: boolean;
 }
 
 export async function findMerchantByPhone(db: Queryable, raw: string): Promise<ChannelMerchant | null> {
   const phone = normalizePhone(raw);
   if (!phone) return null;
   const { rows } = await db.query<ChannelMerchant>(
-    `SELECT id, phone_number, full_name, preferred_language, access_nuban, sweep_percentage::text, daily_cap::text, is_paused, paused_until
+    `SELECT id, phone_number, full_name, preferred_language, access_nuban, sweep_percentage::text, daily_cap::text, is_paused, paused_until, pin_hash IS NOT NULL AS has_pin
        FROM merchants WHERE phone_number = $1`,
     [phone],
   );

@@ -179,7 +179,7 @@ describe('withdrawal HTTP API', () => {
   afterAll(() => pool.end());
 
   it('POST /api/v1/withdrawals pays out; GET /merchants/:id/pension reports balances and eligibility', async () => {
-    const m = await makeTrader(pool, { pension: { emergency: '450.00', retirement: '450.00', firstContributionAt: monthsAgo(4) } });
+    const m = await makeTrader(pool, { pin: '7391', pension: { emergency: '450.00', retirement: '450.00', firstContributionAt: monthsAgo(4) } });
     const before = await app.inject({ method: 'GET', url: `/api/v1/merchants/${m.id}/pension` });
     expect(before.json()).toMatchObject({
       emergency_pot: '450.00',
@@ -188,7 +188,7 @@ describe('withdrawal HTTP API', () => {
       emergency_withdrawal: { eligible: true, reason: null, eligible_on: null },
     });
 
-    const res = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '200.00' } });
+    const res = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '200.00', pin: '7391' } });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toMatchObject({ amount: '200.00', status: 'DISBURSED', destination_nuban: m.access_nuban });
 
@@ -199,11 +199,11 @@ describe('withdrawal HTTP API', () => {
   });
 
   it('maps rule violations to 422 and bad input to 400', async () => {
-    const m = await makeTrader(pool, { pension: { emergency: '450.00', firstContributionAt: monthsAgo(1) } });
-    const early = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '10' } });
+    const m = await makeTrader(pool, { pin: '7391', pension: { emergency: '450.00', firstContributionAt: monthsAgo(1) } });
+    const early = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '10', pin: '7391' } });
     expect(early.statusCode).toBe(422);
     expect(early.json().error.code).toBe('NOT_VESTED');
-    const bad = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '-5' } });
+    const bad = await app.inject({ method: 'POST', url: '/api/v1/withdrawals', payload: { merchant_id: m.id, amount: '-5', pin: '7391' } });
     expect(bad.statusCode).toBe(400);
     expect((await app.inject({ method: 'GET', url: '/api/v1/merchants/not-a-uuid/pension' })).statusCode).toBe(400);
   });

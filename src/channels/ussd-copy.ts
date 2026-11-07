@@ -30,6 +30,18 @@ export interface UssdCopy {
   withdrawRejected: string[];
   withdrawOk(amount: string, account: string): string[];
   voiceQueued: string[];
+  pinNotSet: string[];
+  pinEnter: string[];
+  pinWrong(left: number): string[];
+  pinLocked(minutes: number): string[];
+  pinCurrent: string[];
+  pinNew: string[];
+  pinConfirm: string[];
+  pinMismatch: string[];
+  pinWeak: string[];
+  pinFormat: string[];
+  pinUnchanged: string[];
+  pinChanged: string[];
 }
 
 const en: UssdCopy = {
@@ -41,6 +53,7 @@ const en: UssdCopy = {
     '4. Pause / Resume Sweeps',
     '5. Emergency Withdrawal',
     '6. Spoken Balance (Call)',
+    '7. Change PIN',
   ],
   notRegistered: ['This number is not registered on Kobo Kobo. Sign up in the app to start saving.'],
   invalidChoice: ['Invalid choice. Dial again to start over.'],
@@ -73,6 +86,18 @@ const en: UssdCopy = {
   withdrawRejected: ['The bank could not process this. Your money is safe in the Emergency Pot.'],
   withdrawOk: (amount, account) => [`${amount} is on its way to your Access account ${account}.`],
   voiceQueued: ['You will get a call shortly with your balance. Thank you for saving with Kobo Kobo.'],
+  pinNotSet: ['Set your Kobo Kobo PIN in the app first. You need it to withdraw or change PIN.'],
+  pinEnter: ['Enter your 4-digit PIN to confirm:'],
+  pinWrong: (left) => [`Wrong PIN. ${left} ${left === 1 ? 'try' : 'tries'} left. Nothing was withdrawn.`],
+  pinLocked: (m) => [`PIN locked for ${m} minutes after too many wrong tries.`],
+  pinCurrent: ['Enter your current 4-digit PIN:', '0. Back'],
+  pinNew: ['Enter a new 4-digit PIN:', '0. Back'],
+  pinConfirm: ['Enter the new PIN again:', '0. Back'],
+  pinMismatch: ['The two PINs did not match. Dial again to retry.'],
+  pinWeak: ['That PIN is too easy to guess. Avoid 1111, 1234 or your phone number. Dial again.'],
+  pinFormat: ['A PIN is exactly 4 digits. Dial again to retry.'],
+  pinUnchanged: ['New PIN must be different from the old one. Dial again.'],
+  pinChanged: ['Your PIN has been changed. We sent you a text.'],
 };
 
 const pidgin: Partial<UssdCopy> = {
@@ -84,6 +109,7 @@ const pidgin: Partial<UssdCopy> = {
     '4. Pause / Resume Sweep',
     '5. Emergency Money',
     '6. Hear Balance (Call me)',
+    '7. Change PIN',
   ],
   notRegistered: ['This number no dey Kobo Kobo. Sign up for the app make you start to save.'],
   invalidChoice: ['That choice no correct. Dial again make you start over.'],
@@ -116,6 +142,18 @@ const pidgin: Partial<UssdCopy> = {
   withdrawRejected: ['Bank no gree process am. Your money dey safe for Emergency Pot.'],
   withdrawOk: (amount, account) => [`${amount} dey come your Access account ${account}.`],
   voiceQueued: ['We go call you soon to tell you your balance. Thank you for saving with Kobo Kobo.'],
+  pinNotSet: ['Set your Kobo Kobo PIN for the app first. You go need am to collect money or change PIN.'],
+  pinEnter: ['Put your 4-digit PIN to confirm:'],
+  pinWrong: (left) => [`PIN no correct. ${left} ${left === 1 ? 'chance' : 'chances'} remain. Nothing comot.`],
+  pinLocked: (m) => [`We don lock your PIN for ${m} minutes because you try wrong PIN too much.`],
+  pinCurrent: ['Put your current 4-digit PIN:', '0. Back'],
+  pinNew: ['Put new 4-digit PIN:', '0. Back'],
+  pinConfirm: ['Put the new PIN again:', '0. Back'],
+  pinMismatch: ['The two PIN no match. Dial again.'],
+  pinWeak: ['That PIN too easy to guess. No use 1111, 1234 or your phone number. Dial again.'],
+  pinFormat: ['PIN na exactly 4 digits. Dial again.'],
+  pinUnchanged: ['New PIN must no be the same as the old one. Dial again.'],
+  pinChanged: ['We don change your PIN. We send you text.'],
 };
 
 export function ussdCopy(lang: string): UssdCopy {

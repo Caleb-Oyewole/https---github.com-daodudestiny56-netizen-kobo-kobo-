@@ -5,6 +5,7 @@ import { getPensionSummary } from '../pension/summary';
 import { formatWatDay } from '../time';
 import { emergencyStatusText } from '../sms/templates';
 import { ussdCopy, type UssdCopy } from './ussd-copy';
+import { changePin, pinProblem, verifyPin } from '../security/pin';
 import { maskNuban, requestEmergencyWithdrawal } from '../withdrawals/service';
 import {
   findMerchantByPhone,
@@ -59,10 +60,14 @@ export async function handleUssd(deps: Deps, input: { phoneNumber: string; text:
         return await withdrawFlow(deps, merchant, rest, t);
       case '6':
         return await voiceRequest(deps, merchant, t);
+      case '7':
+        return await changePinFlow(deps, merchant, rest, t);
       default:
         return end(...t.invalidChoice);
     }
   } catch (e) {
+    if (e instanceof AppError && e.code === 'PIN_INVALID') return end(...t.pinWrong(Number(e.details?.attempts_remaining ?? 0)));
+    if (e instanceof AppError && e.code === 'PIN_LOCKED') return end(...t.pinLocked(Number(e.details?.minutes ?? 0)));
     if (e instanceof AppError && e.status < 500) return end(e.message);
     console.error('[ussd] unhandled error', e);
     return end(...t.oops);
@@ -111,6 +116,7 @@ async function withdrawFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: U
   const s = await getPensionSummary(deps.db, m.id, deps.clock());
   if (!s.eligibility.eligible) return end(...t.withdrawUnavailable(emergencyStatusText(m.preferred_language, s.eligibility, true)));
 
+  if (!m.has_pin) return end(...t.pinNotSet);
   if (rest.length === 0) return con(...t.withdrawPrompt(nairaDisplay(s.emergency)));
   let amount;
   try {
@@ -123,9 +129,27 @@ async function withdrawFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: U
   if (rest.length === 1) return con(...t.withdrawConfirm(nairaDisplay(amount), maskNuban(m.access_nuban)));
   if (rest[1] !== '1') return end(...t.cancelled);
 
+  if (rest.length === 2) return con(...t.pinEnter);
+  await verifyPin(deps, m.id, rest[2]); // PIN_INVALID / PIN_LOCKED are turned into screens by the handler
   const w = await requestEmergencyWithdrawal(deps, { merchantId: m.id, amount });
   if (w.status === 'REJECTED') return end(...t.withdrawRejected);
   return end(...t.withdrawOk(nairaDisplay(amount), maskNuban(m.access_nuban)));
+}
+
+async function changePinFlow(deps: Deps, m: ChannelMerchant, rest: string[], t: UssdCopy) {
+  if (!m.has_pin) return end(...t.pinNotSet);
+  if (rest.length === 0) return con(...t.pinCurrent);
+  const [oldPin, newPin, again] = rest;
+  await verifyPin(deps, m.id, oldPin); // fail fast, before asking for the new one
+  if (rest.length === 1) return con(...t.pinNew);
+  const problem = pinProblem(newPin, m.phone_number);
+  if (problem === 'FORMAT') return end(...t.pinFormat);
+  if (problem === 'WEAK') return end(...t.pinWeak);
+  if (oldPin === newPin) return end(...t.pinUnchanged);
+  if (rest.length === 2) return con(...t.pinConfirm);
+  if (newPin !== again) return end(...t.pinMismatch);
+  await changePin(deps, m.id, oldPin, newPin);
+  return end(...t.pinChanged);
 }
 
 async function voiceRequest(deps: Deps, m: ChannelMerchant, t: UssdCopy) {

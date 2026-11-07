@@ -62,6 +62,22 @@ USSD (`4`, `3`) and SMS (`PAUSE`/`STOP`, `RESUME`/`START`, `RATE n`) write exact
 `merchants.is_paused`, `merchants.paused_until` (now + 48h on pause; cleared on resume), `merchants.sweep_percentage` (1 to 5, up to 2 decimals).
 A sweep is skipped when `is_paused AND (paused_until IS NULL OR paused_until > now)`. Covered by `tests/channels.test.ts`.
 
+## 5b. PIN (money-out security)
+
+4-digit PIN, stored only as a salted scrypt hash (peppered with `PIN_PEPPER`). Three wrong tries lock it for 30 minutes
+(`PIN_MAX_ATTEMPTS`, `PIN_LOCK_MINUTES`), the trader is texted, and the counter is race-safe under parallel guessing.
+PINs are set from an authenticated app session, never from USSD (a SIM swapper could otherwise create the PIN meant to stop them).
+
+| Call | Notes |
+|---|---|
+| `POST /api/v1/merchants/:id/pin { pin, reset? }` | onboarding; 204. 409 `PIN_ALREADY_SET` unless `reset: true` (use after ops identity check) |
+| `POST /api/v1/merchants/:id/pin/verify { pin }` | 200 `{ valid }`, 401 `PIN_INVALID` (`details.attempts_remaining`), 423 `PIN_LOCKED`, 422 `PIN_NOT_SET` |
+| `POST /api/v1/merchants/:id/pin/change { old_pin, new_pin }` | 204 |
+| `GET /api/v1/merchants/:id/pin` | `{ pin_set }` |
+
+`POST /api/v1/withdrawals` now needs `pin` (set `WITHDRAWAL_PIN_REQUIRED=false` only for local demos). USSD withdrawal asks for it last;
+USSD option 7 changes it. Weak PINs (1111, 1234, 4321, end of the phone number) are refused with 422 `PIN_TOO_WEAK`.
+
 ## 6. Reconciliation
 
 `GET /api/v1/reconciliation?date=YYYY-MM-DD` compares core, the bank (`/executor/debits`) and the ledger and returns

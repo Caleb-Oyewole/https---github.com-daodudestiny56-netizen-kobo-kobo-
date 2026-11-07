@@ -3,6 +3,7 @@ import type { Deps } from '../src/deps';
 import { MockExecutor } from '../src/executors/mock';
 import { AllowAllGuard } from '../src/guard';
 import { ConsoleSmsProvider } from '../src/sms/provider';
+import { hashPin } from '../src/security/pin';
 import { createPool, type Pool } from '../src/db/pool';
 import { koboToNaira, type Kobo } from '../src/money';
 
@@ -57,6 +58,8 @@ export interface MerchantOpts {
   language?: string;
   paused?: boolean;
   pausedUntil?: Date | null;
+  /** Set a PIN (hashed with the test config's empty pepper). */
+  pin?: string;
 }
 
 export async function makeMerchant(pool: Pool, o: MerchantOpts = {}) {
@@ -80,6 +83,7 @@ export async function makeMerchant(pool: Pool, o: MerchantOpts = {}) {
       o.pausedUntil ?? null,
     ],
   );
+  if (o.pin) await pool.query('UPDATE merchants SET pin_hash = $2, pin_set_at = now() WHERE id = $1', [rows[0].id, await hashPin(o.pin, '')]);
   return rows[0] as { id: string; phone_number: string; access_nuban: string };
 }
 

@@ -23,6 +23,7 @@ export interface AppConfig {
   railsServiceToken: string;
   scheduler: { enabled: boolean; sweepCron: string; retryCron: string };
   sweep: SweepTuning;
+  pin: { pepper: string; maxAttempts: number; lockMinutes: number; withdrawalRequired: boolean };
   sms: {
     provider: 'console' | 'africastalking';
     atUsername: string;
@@ -54,6 +55,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       inRunTries: int(env.SWEEP_IN_RUN_TRIES, 3),
       maxAttempts: int(env.SWEEP_MAX_ATTEMPTS, 6),
       backoffBaseMs: int(env.SWEEP_BACKOFF_BASE_MS, 1000),
+    },
+    pin: {
+      // Server-side secret mixed into every PIN hash. Set it in production; changing it invalidates all PINs.
+      pepper: env.PIN_PEPPER ?? '',
+      maxAttempts: int(env.PIN_MAX_ATTEMPTS, 3),
+      lockMinutes: int(env.PIN_LOCK_MINUTES, 30),
+      withdrawalRequired: bool(env.WITHDRAWAL_PIN_REQUIRED, true),
     },
     sms: {
       provider: env.SMS_PROVIDER === 'africastalking' ? 'africastalking' : 'console',
