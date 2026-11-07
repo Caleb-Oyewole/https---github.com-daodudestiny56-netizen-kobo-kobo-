@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import type { Deps } from '../deps';
 import { toWatDate, WAT_TZ } from '../time';
+import { retryPendingWithdrawals } from '../withdrawals/service';
 import { runNightlyBatch } from './batch';
 
 /**
@@ -27,5 +28,15 @@ export function startScheduler(deps: Deps): { stop(): void } {
     cron.schedule(sweepCron, () => void run('nightly'), { timezone: WAT_TZ }),
     cron.schedule(retryCron, () => void run('retry'), { timezone: WAT_TZ }),
   ];
-  return { stop: () => tasks.forEach((t) => t.stop()) };
+  // Withdrawals whose bank outcome was unknown are replayed (same idempotency key) every minute.
+  const withdrawalTimer = setInterval(() => {
+    retryPendingWithdrawals(deps).catch((e) => console.error('[scheduler] withdrawal retry failed:', e));
+  }, 60_000);
+  withdrawalTimer.unref();
+  return {
+    stop: () => {
+      tasks.forEach((t) => t.stop());
+      clearInterval(withdrawalTimer);
+    },
+  };
 }

@@ -6,6 +6,7 @@ import { serviceAuth } from './http/auth';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
+import { withdrawalRoutes } from './routes/withdrawals';
 
 export function buildServer(deps: Deps): FastifyInstance {
   const app = Fastify({ logger: false });
@@ -32,6 +33,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     splitRoutes(internal, deps);
     pfaRoutes(internal, deps);
     sweepRoutes(internal, deps);
+    withdrawalRoutes(internal, deps);
   });
 
   return app;
