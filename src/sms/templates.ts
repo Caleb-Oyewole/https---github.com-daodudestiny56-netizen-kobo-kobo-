@@ -131,3 +131,29 @@ export const pinLockedNotice = (lang: string, v: { minutes: number }): string =>
     en: (x) => `Kobo Kobo: Wrong PIN too many times. Withdrawals are locked for ${x.minutes} minutes. If this was not you, call us.`,
     pidgin: (x) => `Kobo Kobo: Dem enter wrong PIN many times. We lock withdrawal for ${x.minutes} minutes. If no be you, call us.`,
   })(v);
+
+// ---- Smart Rate (suggestions the trader must confirm) ----
+
+export const rateSuggestion = (lang: string, v: { current: string; suggested: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: Your sales have been steady. Raise your sweep from ${x.current}% to ${x.suggested}% to save more? Reply YES to accept or NO to keep ${x.current}%. Nothing changes unless you reply YES.`,
+    pidgin: (x) => `Kobo Kobo: Your sales don dey steady. You wan raise your sweep from ${x.current}% to ${x.suggested}% make you save more? Reply YES if you gree or NO make e remain ${x.current}%. Nothing go change if you no reply YES.`,
+  })(v);
+
+export const suggestionAccepted = (lang: string, v: { rate: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: Done. Your sweep rate is now ${x.rate}% from the next nightly sweep. Text RATE 2 anytime to change it.`,
+    pidgin: (x) => `Kobo Kobo: E don do. Your sweep rate na ${x.rate}% from the next night sweep. Text RATE 2 anytime if you wan change am.`,
+  })(v);
+
+export const suggestionDeclined = (lang: string, v: { rate: string }): string =>
+  pick<typeof v>(lang, {
+    en: (x) => `Kobo Kobo: No problem. Your sweep rate stays at ${x.rate}%.`,
+    pidgin: (x) => `Kobo Kobo: No wahala. Your sweep rate go remain ${x.rate}%.`,
+  })(v);
+
+export const suggestionNone = (lang: string): string =>
+  pick<Record<string, never>>(lang, {
+    en: () => `Kobo Kobo: There is no rate suggestion waiting for you. Text HELP for commands.`,
+    pidgin: () => `Kobo Kobo: No rate suggestion dey wait for you. Text HELP to see commands.`,
+  })({});

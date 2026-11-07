@@ -46,6 +46,8 @@ export function parseRate(input: string): bigint | null {
 export async function setSweepRate(db: Queryable, merchantId: string, hundredths: bigint): Promise<void> {
   const rate = `${hundredths / 100n}.${(hundredths % 100n).toString().padStart(2, '0')}`;
   await db.query('UPDATE merchants SET sweep_percentage = $2, updated_at = now() WHERE id = $1', [merchantId, rate]);
+  // A rate the trader picked themselves replaces any open Smart Rate suggestion: a later "YES" must not undo it.
+  await db.query(`UPDATE rate_suggestions SET status = 'SUPERSEDED', responded_at = now() WHERE merchant_id = $1 AND status = 'PENDING'`, [merchantId]);
 }
 
 export const PAUSE_HOURS = 48;

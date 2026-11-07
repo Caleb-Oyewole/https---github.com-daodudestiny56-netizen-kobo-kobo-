@@ -6,6 +6,7 @@ import { serviceAuth, webhookAuth } from './http/auth';
 import { channelRoutes } from './routes/channels';
 import { reconciliationRoutes } from './routes/reconciliation';
 import { pinRoutes } from './routes/pin';
+import { smartRateRoutes } from './routes/smart-rate';
 import { pfaRoutes } from './routes/pfa';
 import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
@@ -38,6 +39,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     sweepRoutes(internal, deps);
     withdrawalRoutes(internal, deps);
     pinRoutes(internal, deps);
+    smartRateRoutes(internal, deps);
     reconciliationRoutes(internal, deps);
   });
 

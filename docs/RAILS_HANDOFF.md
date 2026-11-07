@@ -78,6 +78,15 @@ PINs are set from an authenticated app session, never from USSD (a SIM swapper c
 `POST /api/v1/withdrawals` now needs `pin` (set `WITHDRAWAL_PIN_REQUIRED=false` only for local demos). USSD withdrawal asks for it last;
 USSD option 7 changes it. Weak PINs (1111, 1234, 4321, end of the phone number) are refused with 422 `PIN_TOO_WEAK`.
 
+## 5c. Smart Rate
+
+The AI service proposes, the trader decides. `POST /api/v1/smart-rate/suggestions { merchant_id, suggested_rate, reason? }` records the
+suggestion and texts the trader; **it never changes `sweep_percentage`**. The rate changes only on SMS `YES` or an in-app accept:
+`POST /api/v1/smart-rate/suggestions/:id/respond { merchant_id, decision: ACCEPT|DECLINE }` (409 `SUGGESTION_NOT_OPEN` if answered/expired/replaced).
+`GET /api/v1/merchants/:id/smart-rate` returns the open suggestion for the app banner. Rules: 1-5%, must differ from the current rate,
+one open suggestion per trader (409 `SUGGESTION_PENDING`), 72h expiry, 14-day quiet period after a `NO` (409 `SUGGESTION_COOLDOWN`),
+and a rate the trader sets themselves (USSD/SMS `RATE n`) supersedes an open suggestion.
+
 ## 6. Reconciliation
 
 `GET /api/v1/reconciliation?date=YYYY-MM-DD` compares core, the bank (`/executor/debits`) and the ledger and returns

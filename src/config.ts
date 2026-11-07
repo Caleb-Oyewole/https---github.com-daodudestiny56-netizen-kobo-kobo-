@@ -24,6 +24,7 @@ export interface AppConfig {
   scheduler: { enabled: boolean; sweepCron: string; retryCron: string };
   sweep: SweepTuning;
   pin: { pepper: string; maxAttempts: number; lockMinutes: number; withdrawalRequired: boolean };
+  smartRate: { expiryHours: number; declineCooldownDays: number };
   sms: {
     provider: 'console' | 'africastalking';
     atUsername: string;
@@ -63,6 +64,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       lockMinutes: int(env.PIN_LOCK_MINUTES, 30),
       withdrawalRequired: bool(env.WITHDRAWAL_PIN_REQUIRED, true),
     },
+    smartRate: { expiryHours: int(env.SMART_RATE_EXPIRY_HOURS, 72), declineCooldownDays: int(env.SMART_RATE_DECLINE_COOLDOWN_DAYS, 14) },
     sms: {
       provider: env.SMS_PROVIDER === 'africastalking' ? 'africastalking' : 'console',
       atUsername: env.AT_USERNAME ?? 'sandbox',

@@ -40,7 +40,7 @@ export function testPool(): Pool {
 /** Empty every table. TRUNCATE does not fire the ledger's row-level immutability trigger. */
 export async function resetDb(pool: Pool): Promise<void> {
   await pool.query(
-    `TRUNCATE sms_outbox, voice_callback_requests, sweep_guard_alerts, emergency_withdrawals, ledger_entries,
+    `TRUNCATE sms_outbox, voice_callback_requests, rate_suggestions, sweep_guard_alerts, emergency_withdrawals, ledger_entries,
               daily_sweeps, pension_references, pen_reference_counters, inflow_transactions, pension_accounts, merchants
      RESTART IDENTITY CASCADE`,
   );

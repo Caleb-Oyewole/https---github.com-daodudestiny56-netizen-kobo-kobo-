@@ -1,13 +1,14 @@
 import type { Deps } from '../deps';
 import { nairaDisplay, rateDisplay } from '../money';
 import { getPensionSummary } from '../pension/summary';
+import { respondToSuggestion } from '../smart-rate/service';
 import { enqueueSms } from '../sms/outbox';
-import { balanceReply, emergencyStatusText, helpReply, notRegisteredReply, pausedReply, rateSetReply, rateUsageReply, resumedReply, unknownReply } from '../sms/templates';
+import { balanceReply, emergencyStatusText, helpReply, notRegisteredReply, pausedReply, rateSetReply, rateUsageReply, resumedReply, suggestionAccepted, suggestionDeclined, suggestionNone, unknownReply } from '../sms/templates';
 import { formatWatDay } from '../time';
 import { findMerchantByPhone, parseRate, pauseSweeps, resumeSweeps, setSweepRate } from './actions';
 
 /**
- * Two-way SMS: BAL, PAUSE (alias STOP), RESUME (alias START), RATE n, HELP.
+ * Two-way SMS: BAL, PAUSE (alias STOP), RESUME (alias START), RATE n, YES / NO (answer to a Smart Rate suggestion), HELP.
  * Returns the reply text (the PRD's `{ reply }`) and, for registered traders, also queues it as an outgoing SMS.
  * Unregistered senders get the text in the HTTP response only: we never spend SMS on strangers.
  */
@@ -50,6 +51,17 @@ export async function handleInboundSms(deps: Deps, input: { from: string; text: 
         await setSweepRate(deps.db, merchant.id, h);
         reply = rateSetReply(lang, { rate: rateDisplay(h) });
       }
+      break;
+    }
+    case 'YES':
+    case 'NO': {
+      const r = await respondToSuggestion(deps, { merchantId: merchant.id, decision: cmd === 'YES' ? 'ACCEPT' : 'DECLINE', via: 'SMS' });
+      reply =
+        r.outcome === 'NONE'
+          ? suggestionNone(lang)
+          : r.outcome === 'ACCEPTED'
+            ? suggestionAccepted(lang, { rate: rateDisplay(r.rate) })
+            : suggestionDeclined(lang, { rate: rateDisplay(r.rate) });
       break;
     }
     case 'HELP':
