@@ -29,7 +29,7 @@ export interface AppConfig {
   sweep: SweepTuning;
   pin: { pepper: string; maxAttempts: number; lockMinutes: number; withdrawalRequired: boolean };
   voice: { provider: 'console' | 'africastalking'; callFrom: string; maxAttempts: number; retryBaseMs: number; callTimeoutMs: number; dispatchIntervalMs: number };
-  guard: { releaseWindowDays: number; holdAboveNaira: number };
+  guard: { releaseWindowDays: number; holdAboveNaira: number; url: string; token: string; timeoutMs: number; failClosed: boolean };
   smartRate: { expiryHours: number; declineCooldownDays: number };
   sms: {
     provider: 'console' | 'africastalking';
@@ -83,7 +83,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       dispatchIntervalMs: int(env.VOICE_DISPATCH_INTERVAL_MS, 10_000),
     },
     // 0 = off. A simple rule-based stand-in until the AI Sweep Guard is wired in: hold any night above this many naira.
-    guard: { releaseWindowDays: int(env.GUARD_RELEASE_WINDOW_DAYS, 3), holdAboveNaira: int(env.GUARD_HOLD_ABOVE_NAIRA, 0) },
+    guard: { releaseWindowDays: int(env.GUARD_RELEASE_WINDOW_DAYS, 3), holdAboveNaira: int(env.GUARD_HOLD_ABOVE_NAIRA, 0), url: env.GUARD_URL ?? '', token: env.GUARD_TOKEN ?? '', timeoutMs: int(env.GUARD_TIMEOUT_MS, 3000), failClosed: env.GUARD_FAIL_CLOSED === 'true' },
     smartRate: { expiryHours: int(env.SMART_RATE_EXPIRY_HOURS, 72), declineCooldownDays: int(env.SMART_RATE_DECLINE_COOLDOWN_DAYS, 14) },
     sms: {
       provider: env.SMS_PROVIDER === 'africastalking' ? 'africastalking' : 'console',

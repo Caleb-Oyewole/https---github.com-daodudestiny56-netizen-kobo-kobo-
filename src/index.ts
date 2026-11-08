@@ -5,6 +5,7 @@ import type { Deps } from './deps';
 import { HttpExecutor } from './executors/http';
 import { MockExecutor } from './executors/mock';
 import { AllowAllGuard, ThresholdGuard } from './guard';
+import { HttpGuard } from './guard-http';
 import { startSmsDispatcher } from './sms/dispatcher';
 import { AfricasTalkingProvider, ConsoleSmsProvider } from './sms/provider';
 import { buildServer } from './server';
@@ -41,7 +42,7 @@ const voice =
 if (voice instanceof ConsoleVoiceProvider) console.warn('[boot] VOICE_PROVIDER=console: calls are printed, not placed.');
 
 const guard =
-  config.guard.holdAboveNaira > 0 ? new ThresholdGuard(BigInt(config.guard.holdAboveNaira) * 100n) : new AllowAllGuard();
+  config.guard.url ? new HttpGuard(config.guard.url, config.guard.token, config.guard.timeoutMs, config.guard.failClosed) : config.guard.holdAboveNaira > 0 ? new ThresholdGuard(BigInt(config.guard.holdAboveNaira) * 100n) : new AllowAllGuard();
 if (guard instanceof ThresholdGuard) console.warn(`[boot] GUARD_HOLD_ABOVE_NAIRA=${config.guard.holdAboveNaira}: simple threshold guard active (AI guard not wired).`);
 
 if (process.env.RUN_MIGRATIONS === 'true') {
