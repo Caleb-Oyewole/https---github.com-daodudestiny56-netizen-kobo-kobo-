@@ -5,8 +5,8 @@ Base URL: core service (`PORT`, default 3000). Internal routes need `Authorizati
 
 ## 1. Schema
 
-`migrations/001..003_*.sql`, applied in order by `npm run migrate` (records `schema_migrations`).
-Canonical naming follows PRD v2 (`bank_reference`, `is_excluded_from_sweep`). Core owns migrations; Rails should read, not alter.
+`migrations/001..007_*.sql`, applied in order by `npm run migrate` (tracked in `kobo_core_migrations`, deliberately not Rails' `schema_migrations`, so both can share one database).
+Canonical naming follows PRD v2 (`bank_reference`, `is_excluded_from_sweep`). **Core owns every migration for these tables** (one owner). Rails does not run its own DDL against them: if you need a column or index, open a PR adding the next numbered file in `kobo-core/migrations/`. Rails keeps its own migrations for Rails-only tables (users, sessions, etc.).
 Key constraints: `UNIQUE (merchant_id, sweep_date)` on `daily_sweeps`; `merchant_id` is unique on `pension_accounts`;
 `ledger_entries` is append-only (triggers block UPDATE/DELETE and reject unbalanced journals).
 Rails writes `merchants` and `inflow_transactions`; core writes `daily_sweeps`, `ledger_entries`, `pension_accounts` balances.
