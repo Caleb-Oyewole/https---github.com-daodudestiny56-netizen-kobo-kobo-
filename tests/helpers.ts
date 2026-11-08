@@ -20,7 +20,7 @@ export function makeDeps(
   o: { now?: Date; config?: Partial<ReturnType<typeof loadConfig>>; sweep?: Partial<ReturnType<typeof loadConfig>['sweep']> } = {},
 ): Deps & { executor: MockExecutor; sms: ConsoleSmsProvider; voice: ConsoleVoiceProvider; setNow(d: Date): void } {
   let now = o.now ?? NIGHT;
-  const base = loadConfig({});
+  const base = loadConfig({ LOG_LEVEL: 'silent' });
   return {
     db: pool,
     config: { ...base, ...o.config, sweep: { ...base.sweep, backoffBaseMs: 0, ...o.sweep } },

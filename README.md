@@ -9,7 +9,7 @@ docker compose up -d db        # or any Postgres 16
 npm install
 npm run migrate
 npm run dev
-npm test                       # needs DATABASE_URL pointing at a throwaway Postgres
+npm test                       # needs TEST_DATABASE_URL, e.g. postgres://postgres:postgres@localhost:5432/kobo_test
 ```
 
 ## Run in Docker
@@ -40,3 +40,9 @@ Integration contract for the Rails service: [docs/RAILS_HANDOFF.md](docs/RAILS_H
 
 Layout: `src/split` (allocation), `src/ledger`, `src/sweeps` (service, batch, scheduler), `src/withdrawals`,
 `src/channels` (USSD, SMS; en + Pidgin), `src/security` (PIN), `src/smart-rate`, `src/voice` (IVR), `src/sms` (outbox, dispatcher), `src/pfa`, `src/reconciliation`, `src/routes`.
+
+## Tests
+
+`npm test` creates and **drops** the database named in `TEST_DATABASE_URL` (default `postgres://postgres@localhost:5433/kobo_test`),
+so never point it at real data. It runs against a real Postgres, including a 1,500-trader batch and a full-day end-to-end run.
+CI (`.github/workflows/ci.yml`) runs typecheck, the suite and a Docker build on every PR.
