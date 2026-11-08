@@ -14,6 +14,8 @@ export interface SweepTuning {
 }
 
 export interface AppConfig {
+  nodeEnv: string;
+  logLevel: string;
   databaseUrl: string;
   port: number;
   serviceToken: string;
@@ -43,6 +45,8 @@ export interface AppConfig {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
+    nodeEnv: env.NODE_ENV ?? 'development',
+    logLevel: env.LOG_LEVEL ?? 'info',
     databaseUrl: env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5432/kobo',
     port: int(env.PORT, 3000),
     serviceToken: env.SERVICE_TOKEN ?? '',
@@ -91,4 +95,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       retryBaseMs: int(env.SMS_RETRY_BASE_MS, 30_000),
     },
   };
+}
+
+/**
+ * Refuse to boot a production process that would run open or fake. In production the shared secrets must be set,
+ * the PIN pepper must be set, and the bank must be the real executor. Returns the problems (empty = fine).
+ */
+export function productionProblems(c: AppConfig): string[] {
+  if (c.nodeEnv !== 'production') return [];
+  const out: string[] = [];
+  if (!c.serviceToken) out.push('SERVICE_TOKEN is empty: internal endpoints would be open');
+  if (!c.webhookToken) out.push('WEBHOOK_TOKEN is empty: telco webhooks would be open');
+  if (!c.pin.pepper) out.push('PIN_PEPPER is empty');
+  if (c.executorMode !== 'http') out.push('EXECUTOR_MODE is not "http": no real money would move');
+  return out;
 }

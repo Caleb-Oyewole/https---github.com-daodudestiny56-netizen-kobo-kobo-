@@ -1,4 +1,4 @@
-import { loadConfig } from './config';
+import { loadConfig, productionProblems } from './config';
 import { createPool } from './db/pool';
 import { migrate } from './db/migrate';
 import type { Deps } from './deps';
@@ -13,6 +13,15 @@ import { AfricasTalkingVoiceProvider, ConsoleVoiceProvider } from './voice/provi
 import { startScheduler } from './sweeps/scheduler';
 
 const config = loadConfig();
+const problems = productionProblems(config);
+if (problems.length) {
+  console.error(`[boot] refusing to start in production:\n - ${problems.join('\n - ')}`);
+  process.exit(1);
+}
+process.on('unhandledRejection', (e) => {
+  console.error('[fatal] unhandled rejection', e);
+  process.exit(1); // a supervisor restarts us; carrying on in an unknown state is worse
+});
 const pool = createPool(config.databaseUrl);
 
 const executor =

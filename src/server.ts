@@ -13,8 +13,18 @@ import { splitRoutes } from './routes/split';
 import { sweepRoutes } from './routes/sweeps';
 import { withdrawalRoutes } from './routes/withdrawals';
 
-export function buildServer(deps: Deps): FastifyInstance {
-  const app = Fastify({ logger: false });
+/** A request line safe to log: no query string (it carries the webhook token), no headers, no body (USSD text carries PINs). */
+export const safeRequestLog = (req: { method?: string; url?: string }) => ({ method: req.method, path: (req.url ?? '').split('?')[0] });
+
+export function buildServer(deps: Deps, opts: { logStream?: NodeJS.WritableStream } = {}): FastifyInstance {
+  const app = Fastify({
+    // Structured request logs. Only method and path are logged (see safeRequestLog); error logs never include bodies.
+    logger:
+      deps.config.logLevel === 'silent'
+        ? false
+        : { level: deps.config.logLevel, ...(opts.logStream ? { stream: opts.logStream } : {}), serializers: { req: safeRequestLog } },
+    bodyLimit: 64 * 1024, // every payload we accept is tiny; reject anything bigger early
+  });
   app.register(formbody);
 
   app.setErrorHandler((err: Error, _req, reply) => {
@@ -25,7 +35,7 @@ export function buildServer(deps: Deps): FastifyInstance {
     if (status && status < 500) {
       return reply.code(status).send({ error: { code: 'BAD_REQUEST', message: err.message } });
     }
-    console.error('[http] unhandled error', err);
+    _req.log.error({ err: { message: err.message, stack: err.stack } }, 'unhandled error');
     return reply.code(500).send({ error: { code: 'INTERNAL', message: 'Internal error' } });
   });
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } }));

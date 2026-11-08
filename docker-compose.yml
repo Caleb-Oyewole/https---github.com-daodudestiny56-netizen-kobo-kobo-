@@ -25,6 +25,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      NODE_ENV: ${NODE_ENV:-development}   # "production" refuses to boot with empty tokens, no PIN pepper or the mock bank
       DATABASE_URL: postgres://postgres:postgres@db:5432/kobo
       RUN_MIGRATIONS: "true"
       PORT: "3000"
