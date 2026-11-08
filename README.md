@@ -12,6 +12,15 @@ npm run dev
 npm test                       # needs DATABASE_URL pointing at a throwaway Postgres
 ```
 
+## Run in Docker
+
+```
+docker compose up --build      # Postgres + core on :3000, migrations run on boot (RUN_MIGRATIONS=true)
+```
+
+Defaults are safe for a laptop: mock bank, console SMS/voice. Real values go in a `.env` next to the compose file
+(`SERVICE_TOKEN`, `WEBHOOK_TOKEN`, `PIN_PEPPER`, `EXECUTOR_MODE=http`, `RAILS_BASE_URL`, `AT_*`). `/health` checks the database.
+
 ## Demo
 
 ```

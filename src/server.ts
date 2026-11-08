@@ -30,7 +30,15 @@ export function buildServer(deps: Deps): FastifyInstance {
   });
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } }));
 
-  app.get('/health', async () => ({ status: 'ok' }));
+  // Liveness plus a database round trip, so an orchestrator stops sending traffic to an instance that lost its database.
+  app.get('/health', async (_req, reply) => {
+    try {
+      await deps.db.query('SELECT 1');
+      return { status: 'ok' };
+    } catch {
+      return reply.code(503).send({ status: 'unavailable', reason: 'database' });
+    }
+  });
 
   // Internal API: Rails and ops call these with the service token.
   app.register(async (internal) => {

@@ -10,6 +10,18 @@ const MIGRATIONS_DIR = fileURLToPath(new URL('../../migrations/', import.meta.ur
  * BEGIN;/COMMIT; lines (001 does); they are stripped so the runner's transaction is the only one.
  */
 export async function migrate(pool: Pool, dir = MIGRATIONS_DIR): Promise<string[]> {
+  // One migrator at a time, so several containers booting together cannot apply the same file twice.
+  const lock = await pool.connect();
+  try {
+    await lock.query('SELECT pg_advisory_lock(727001)');
+    return await applyPending(pool, dir);
+  } finally {
+    await lock.query('SELECT pg_advisory_unlock(727001)').catch(() => undefined);
+    lock.release();
+  }
+}
+
+async function applyPending(pool: Pool, dir: string): Promise<string[]> {
   await pool.query(
     `CREATE TABLE IF NOT EXISTS kobo_core_migrations (
        filename   TEXT PRIMARY KEY,

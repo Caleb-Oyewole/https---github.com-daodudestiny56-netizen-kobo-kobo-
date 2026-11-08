@@ -1,5 +1,6 @@
 import { loadConfig } from './config';
 import { createPool } from './db/pool';
+import { migrate } from './db/migrate';
 import type { Deps } from './deps';
 import { HttpExecutor } from './executors/http';
 import { MockExecutor } from './executors/mock';
@@ -33,6 +34,11 @@ if (voice instanceof ConsoleVoiceProvider) console.warn('[boot] VOICE_PROVIDER=c
 const guard =
   config.guard.holdAboveNaira > 0 ? new ThresholdGuard(BigInt(config.guard.holdAboveNaira) * 100n) : new AllowAllGuard();
 if (guard instanceof ThresholdGuard) console.warn(`[boot] GUARD_HOLD_ABOVE_NAIRA=${config.guard.holdAboveNaira}: simple threshold guard active (AI guard not wired).`);
+
+if (process.env.RUN_MIGRATIONS === 'true') {
+  const applied = await migrate(pool);
+  console.log(applied.length ? `[boot] migrations applied: ${applied.join(', ')}` : '[boot] migrations: up to date');
+}
 
 const deps: Deps = { db: pool, config, clock: () => new Date(), executor, guard, sms, voice };
 
