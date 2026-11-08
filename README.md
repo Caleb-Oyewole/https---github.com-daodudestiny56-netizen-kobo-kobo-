@@ -35,7 +35,7 @@ npm run demo:sweep       # run tonight's 11 PM sweep now and print what happened
 Each trader shows a different outcome (normal sweep, young account, cooldown, paused, below buffer, Sweep Guard hold
 released by texting `OK`, pending Smart Rate suggestion). The seed refuses to wipe a non-local database without `--force`.
 
-Integration contract for the Rails service: [docs/RAILS_HANDOFF.md](docs/RAILS_HANDOFF.md).
+Integration contract for the Rails service: [docs/RAILS_HANDOFF.md](docs/RAILS_HANDOFF.md). Every endpoint: [docs/openapi.yaml](docs/openapi.yaml).
 `EXECUTOR_MODE=mock` runs without Rails; `http` uses `RAILS_BASE_URL`.
 
 Layout: `src/split` (allocation), `src/ledger`, `src/sweeps` (service, batch, scheduler), `src/withdrawals`,

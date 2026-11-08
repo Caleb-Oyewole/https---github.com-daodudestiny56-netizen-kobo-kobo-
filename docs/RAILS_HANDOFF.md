@@ -1,5 +1,7 @@
 # Kobo Kobo core: handoff to the Rails service
 
+Full machine-readable contract: [`docs/openapi.yaml`](openapi.yaml) (import it into Postman or Swagger UI; a test keeps it in step with the code).
+
 Base URL: core service (`PORT`, default 3000). Internal routes need `Authorization: Bearer $SERVICE_TOKEN`
 (open if unset, dev only). Money is a decimal string in naira (`"900.00"`); never a float.
 
