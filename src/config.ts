@@ -19,13 +19,15 @@ export interface AppConfig {
   serviceToken: string;
   webhookToken: string;
   executorMode: 'mock' | 'http';
+  /** Balance (naira) the mock executor reports for any account it was not told about. Demo/dev only. */
+  mockDefaultBalanceNaira: number;
   railsBaseUrl: string;
   railsServiceToken: string;
   scheduler: { enabled: boolean; sweepCron: string; retryCron: string };
   sweep: SweepTuning;
   pin: { pepper: string; maxAttempts: number; lockMinutes: number; withdrawalRequired: boolean };
   voice: { provider: 'console' | 'africastalking'; callFrom: string; maxAttempts: number; retryBaseMs: number; callTimeoutMs: number; dispatchIntervalMs: number };
-  guard: { releaseWindowDays: number };
+  guard: { releaseWindowDays: number; holdAboveNaira: number };
   smartRate: { expiryHours: number; declineCooldownDays: number };
   sms: {
     provider: 'console' | 'africastalking';
@@ -46,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     serviceToken: env.SERVICE_TOKEN ?? '',
     webhookToken: env.WEBHOOK_TOKEN ?? '',
     executorMode: env.EXECUTOR_MODE === 'http' ? 'http' : 'mock',
+    mockDefaultBalanceNaira: int(env.MOCK_DEFAULT_BALANCE_NAIRA, 0),
     railsBaseUrl: env.RAILS_BASE_URL ?? 'http://localhost:3001',
     railsServiceToken: env.RAILS_SERVICE_TOKEN ?? '',
     scheduler: {
@@ -75,7 +78,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       callTimeoutMs: int(env.VOICE_CALL_TIMEOUT_MS, 300_000),
       dispatchIntervalMs: int(env.VOICE_DISPATCH_INTERVAL_MS, 10_000),
     },
-    guard: { releaseWindowDays: int(env.GUARD_RELEASE_WINDOW_DAYS, 3) },
+    // 0 = off. A simple rule-based stand-in until the AI Sweep Guard is wired in: hold any night above this many naira.
+    guard: { releaseWindowDays: int(env.GUARD_RELEASE_WINDOW_DAYS, 3), holdAboveNaira: int(env.GUARD_HOLD_ABOVE_NAIRA, 0) },
     smartRate: { expiryHours: int(env.SMART_RATE_EXPIRY_HOURS, 72), declineCooldownDays: int(env.SMART_RATE_DECLINE_COOLDOWN_DAYS, 14) },
     sms: {
       provider: env.SMS_PROVIDER === 'africastalking' ? 'africastalking' : 'console',

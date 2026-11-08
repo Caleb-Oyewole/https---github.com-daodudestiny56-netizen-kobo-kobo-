@@ -10,7 +10,11 @@
     "start": "tsx src/index.ts",
     "migrate": "tsx src/db/migrate-cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo:seed": "tsx scripts/demo-seed.ts",
+    "demo:sweep": "tsx scripts/demo-sweep.ts",
+    "demo:ussd": "tsx scripts/demo-channel.ts ussd",
+    "demo:sms": "tsx scripts/demo-channel.ts sms"
   },
   "dependencies": {
     "@fastify/formbody": "^8.0.0",

@@ -28,3 +28,15 @@ export class AllowAllGuard implements SweepGuard {
     return { verdict: 'CLEAR' };
   }
 }
+
+/**
+ * Interim rule-based guard: hold a night whose takings exceed a fixed ceiling (ANOMALOUS_INFLOW), so the hold/release flow
+ * works end to end before the AI service exists. Not a substitute for it.
+ */
+export class ThresholdGuard implements SweepGuard {
+  constructor(private readonly ceiling: Kobo) {}
+  async evaluate(ctx: GuardContext): Promise<GuardVerdict> {
+    if (ctx.takings <= this.ceiling) return { verdict: 'CLEAR' };
+    return { verdict: 'HOLD', alertType: 'ANOMALOUS_INFLOW', details: { rule: 'takings_above_ceiling', takings_kobo: ctx.takings.toString(), ceiling_kobo: this.ceiling.toString() } };
+  }
+}

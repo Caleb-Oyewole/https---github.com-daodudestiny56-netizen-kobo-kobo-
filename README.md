@@ -12,6 +12,20 @@ npm run dev
 npm test                       # needs DATABASE_URL pointing at a throwaway Postgres
 ```
 
+## Demo
+
+```
+cp .env.example .env     # set DATABASE_URL, EXECUTOR_MODE=mock, MOCK_DEFAULT_BALANCE_NAIRA=500000, GUARD_HOLD_ABOVE_NAIRA=1000000
+npm run demo:seed        # resets the (local) database and replays months of REAL sweeps for 7 demo traders
+npm run dev              # core on :3000 (SCHEDULER_ENABLED=false if you want to trigger the sweep yourself)
+npm run demo:ussd -- +2348031230001     # dial the USSD menu as Mama Ngozi (PIN 7391)
+npm run demo:sms  -- +2348031230001 BAL # text the service
+npm run demo:sweep       # run tonight's 11 PM sweep now and print what happened to each trader
+```
+
+Each trader shows a different outcome (normal sweep, young account, cooldown, paused, below buffer, Sweep Guard hold
+released by texting `OK`, pending Smart Rate suggestion). The seed refuses to wipe a non-local database without `--force`.
+
 Integration contract for the Rails service: [docs/RAILS_HANDOFF.md](docs/RAILS_HANDOFF.md).
 `EXECUTOR_MODE=mock` runs without Rails; `http` uses `RAILS_BASE_URL`.
 

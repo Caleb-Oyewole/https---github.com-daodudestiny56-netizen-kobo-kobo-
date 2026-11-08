@@ -3,7 +3,7 @@ import { createPool } from './db/pool';
 import type { Deps } from './deps';
 import { HttpExecutor } from './executors/http';
 import { MockExecutor } from './executors/mock';
-import { AllowAllGuard } from './guard';
+import { AllowAllGuard, ThresholdGuard } from './guard';
 import { startSmsDispatcher } from './sms/dispatcher';
 import { AfricasTalkingProvider, ConsoleSmsProvider } from './sms/provider';
 import { buildServer } from './server';
@@ -15,7 +15,7 @@ const config = loadConfig();
 const pool = createPool(config.databaseUrl);
 
 const executor =
-  config.executorMode === 'http' ? new HttpExecutor(config.railsBaseUrl, config.railsServiceToken) : new MockExecutor();
+  config.executorMode === 'http' ? new HttpExecutor(config.railsBaseUrl, config.railsServiceToken) : new MockExecutor(BigInt(config.mockDefaultBalanceNaira) * 100n);
 if (executor instanceof MockExecutor) console.warn('[boot] EXECUTOR_MODE=mock: no real money moves. Set EXECUTOR_MODE=http for the Rails executor.');
 
 const sms =
@@ -30,7 +30,11 @@ const voice =
     : new ConsoleVoiceProvider(true);
 if (voice instanceof ConsoleVoiceProvider) console.warn('[boot] VOICE_PROVIDER=console: calls are printed, not placed.');
 
-const deps: Deps = { db: pool, config, clock: () => new Date(), executor, guard: new AllowAllGuard(), sms, voice };
+const guard =
+  config.guard.holdAboveNaira > 0 ? new ThresholdGuard(BigInt(config.guard.holdAboveNaira) * 100n) : new AllowAllGuard();
+if (guard instanceof ThresholdGuard) console.warn(`[boot] GUARD_HOLD_ABOVE_NAIRA=${config.guard.holdAboveNaira}: simple threshold guard active (AI guard not wired).`);
+
+const deps: Deps = { db: pool, config, clock: () => new Date(), executor, guard, sms, voice };
 
 const app = buildServer(deps);
 const scheduler = config.scheduler.enabled ? startScheduler(deps) : null;

@@ -27,6 +27,9 @@ export class MockExecutor implements SweepExecutor {
   private failures: Failure[] = [];
   private seq = 0;
 
+  /** `defaultBalance` is what any account we were not told about holds (so a demo needs no per-account setup). */
+  constructor(private readonly defaultBalance: Kobo = 0n) {}
+
   setBalance(nuban: string, amount: Kobo): void {
     this.balances.set(nuban, amount);
   }
@@ -45,7 +48,7 @@ export class MockExecutor implements SweepExecutor {
     this.calls.balance++;
     const f = this.takeFailure('balance');
     if (f) throw new ExecutorError(f.code, 'simulated balance failure');
-    return this.balances.get(nuban) ?? 0n;
+    return this.balances.get(nuban) ?? this.defaultBalance;
   }
 
   async debit(req: DebitRequest): Promise<DebitResult> {
@@ -58,7 +61,7 @@ export class MockExecutor implements SweepExecutor {
       if (prior.amount !== req.amount) throw new ExecutorError('IDEMPOTENCY_CONFLICT', 'Same key, different amount');
       return { debitReference: prior.debitReference, amount: prior.amount };
     }
-    const balance = this.balances.get(req.nuban) ?? 0n;
+    const balance = this.balances.get(req.nuban) ?? this.defaultBalance;
     if (balance < req.amount) throw new ExecutorError('INSUFFICIENT_FUNDS', `Balance ${balance} is below ${req.amount}`);
 
     this.balances.set(req.nuban, balance - req.amount);
