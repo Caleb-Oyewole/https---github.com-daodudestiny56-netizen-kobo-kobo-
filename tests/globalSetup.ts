@@ -8,6 +8,7 @@ export default async function setup() {
   const url = new URL(TEST_URL);
   const dbName = url.pathname.slice(1);
   if (!/^\w+$/.test(dbName)) throw new Error(`Unsafe test database name: ${dbName}`);
+  if (!dbName.endsWith('_test')) throw new Error(`Refusing to drop "${dbName}": test database names must end in _test`);
   url.pathname = '/postgres';
   const admin = new pg.Client({ connectionString: url.toString() });
   await admin.connect();
